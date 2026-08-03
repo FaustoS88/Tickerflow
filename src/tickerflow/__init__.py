@@ -4,4 +4,4 @@ from .models import Candle
 from .registry import fetch
 
 __all__ = ["Candle", "fetch"]
-__version__ = "0.2.2"
+__version__ = "0.2.3"

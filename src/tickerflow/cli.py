@@ -81,14 +81,17 @@ async def _run_fetch(
 ) -> None:
     try:
         if provider_name:
-            chain = [p for p in pick(symbol) if p.name == provider_name]
-            if not chain:
-                available = [p.name for p in pick(symbol)]
+            target = provider_name.lower()
+            names = [name for name in pick(symbol) if name == target]
+            if not names:
+                available = pick(symbol)
                 raise click.ClickException(
                     f"Provider '{provider_name}' not in chain for {symbol}. "
                     f"Available: {', '.join(available)}"
                 )
-            candles = await chain[0].fetch(symbol, interval, limit)
+            from tickerflow.registry import _FACTORIES
+            provider = _FACTORIES[names[0]]()
+            candles = await provider.fetch(symbol, interval, limit)
         else:
             candles = await _registry_fetch(symbol, interval, limit)
 

@@ -14,6 +14,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+import tickerflow
 from tickerflow.registry import fetch as _fetch
 from tickerflow.registry import pick, teardown
 
@@ -27,7 +28,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="tickerflow",
     description="Self-hosted market data API — crypto, stocks, forex via automatic routing.",
-    version="0.2.0",
+    version=tickerflow.__version__,
     lifespan=lifespan,
 )
 
@@ -48,7 +49,7 @@ async def health() -> dict[str, str]:
 async def providers(symbol: str) -> Any:
     """Return the ordered provider chain for a given symbol."""
     chain = pick(symbol.upper())
-    return {"symbol": symbol.upper(), "providers": [p.name for p in chain]}
+    return {"symbol": symbol.upper(), "providers": chain}
 
 
 @app.get("/ohlcv/{symbol}")

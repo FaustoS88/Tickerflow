@@ -27,7 +27,7 @@ async def main() -> None:
 
     for symbol, interval, limit in symbols:
         chain = pick(symbol)
-        chain_str = " → ".join(p.name for p in chain)
+        chain_str = " → ".join(chain)
         print(f"\n{symbol}  [{interval}]")
         print(f"  chain : {chain_str}")
 

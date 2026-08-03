@@ -59,8 +59,9 @@ def test_fetch_csv_output(runner: CliRunner) -> None:
 def test_fetch_with_valid_provider(runner: CliRunner) -> None:
     mock_provider = AsyncMock(return_value=_candles(2))
     mock_provider.name = "binance"
+    mock_provider.supports.return_value = True
 
-    with patch("tickerflow.cli.pick", return_value=[mock_provider]):
+    with patch("tickerflow.cli.pick", return_value=["binance"]), patch("tickerflow.registry._FACTORIES", {"binance": lambda: mock_provider}):
         result = runner.invoke(main, ["fetch", "BTCUSDT", "1d", "2", "--provider", "binance"])
     assert result.exit_code == 0, result.output
 
@@ -68,8 +69,9 @@ def test_fetch_with_valid_provider(runner: CliRunner) -> None:
 def test_fetch_with_invalid_provider(runner: CliRunner) -> None:
     mock_provider = AsyncMock()
     mock_provider.name = "binance"
+    mock_provider.supports.return_value = True
 
-    with patch("tickerflow.cli.pick", return_value=[mock_provider]):
+    with patch("tickerflow.cli.pick", return_value=["binance"]):
         result = runner.invoke(main, ["fetch", "BTCUSDT", "1d", "2", "--provider", "nonexistent"])
     assert result.exit_code != 0
     assert "not in chain" in result.output

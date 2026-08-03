@@ -93,42 +93,43 @@ def _get_finnhub() -> OHLCVProvider:
     return _finnhub
 
 
-def pick(symbol: str) -> list[OHLCVProvider]:
-    """Return an ordered provider chain for *symbol*.
+# Lazy factories — providers are constructed on demand
+_FACTORIES = {
+    "binance": _get_binance,
+    "coingecko": _get_coingecko,
+    "kraken": _get_kraken,
+    "kucoin": _get_kucoin,
+    "yfinance": _get_yfinance,
+    "tiingo": _get_tiingo,
+    "finnhub": _get_finnhub,
+}
+
+
+def pick(symbol: str) -> list[str]:
+    """Return an ordered chain of provider names for *symbol* (no imports).
 
     Routing rules:
-    - Crypto  → Binance (primary), yfinance (fallback)
-    - Stocks  → yfinance (primary), Tiingo (fallback daily/weekly only),
-                Finnhub (fallback for intraday)
-    - Intl    → yfinance (primary), Finnhub (fallback)
-    - Forex   → yfinance (primary), Finnhub (fallback)
+    - Crypto  → binance, coingecko, kraken, kucoin, yfinance
+    - Stocks  → yfinance, tiingo, finnhub
+    - Intl    → yfinance, finnhub
+    - Forex   → yfinance, finnhub
     - Unknown → all providers
     """
     up = symbol.upper()
 
     if _CRYPTO_RE.match(up):
-        return [_get_binance(), _get_coingecko(), _get_kraken(), _get_kucoin(), _get_yfinance()]
+        return ["binance", "coingecko", "kraken", "kucoin", "yfinance"]
 
     if _STOCK_RE.match(up):
-        # Tiingo covers daily/weekly; Finnhub covers intraday — both tried as fallbacks
-        return [_get_yfinance(), _get_tiingo(), _get_finnhub()]
+        return ["yfinance", "tiingo", "finnhub"]
 
     if _INTL_STOCK_RE.match(up):
-        return [_get_yfinance(), _get_finnhub()]
+        return ["yfinance", "finnhub"]
 
     if _FOREX_RE.match(up):
-        return [_get_yfinance(), _get_finnhub()]
+        return ["yfinance", "finnhub"]
 
-    # Unknown — try all
-    return [
-        _get_binance(),
-        _get_coingecko(),
-        _get_kraken(),
-        _get_kucoin(),
-        _get_yfinance(),
-        _get_tiingo(),
-        _get_finnhub(),
-    ]
+    return ["binance", "coingecko", "kraken", "kucoin", "yfinance", "tiingo", "finnhub"]
 
 
 def _candles_to_dataframe(candles: list[Candle]) -> pd.DataFrame:
@@ -191,21 +192,41 @@ async def fetch(
             logger.debug("cache hit for %s %s (limit=%d)", symbol, interval, limit)
             return _candles_to_dataframe(cached) if as_dataframe else cached
 
-    chain = pick(symbol)
     tried: list[str] = []
 
-    for provider in chain:
+    for name in pick(symbol):
+        if not isinstance(name, str):
+            provider = name
+            name_str = getattr(provider, "name", str(provider))
+        else:
+            name_str = name
+            if name not in _FACTORIES:
+                logger.warning("provider %s unavailable, skipping", name)
+                tried.append(name)
+                continue
+            try:
+                provider = _FACTORIES[name]()
+            except Exception as e:
+                logger.warning("provider %s unavailable, skipping: %s", name, e)
+                tried.append(name)
+                continue
+
         if not provider.supports(symbol):
-            logger.debug("provider %s skipped — does not support %s", provider.name, symbol)
+            logger.debug("provider %s skipped — does not support %s", name_str, symbol)
             continue
 
-        logger.debug("trying provider %s for %s %s", provider.name, symbol, interval)
-        result = await provider.fetch(symbol, interval, limit)
+        logger.debug("trying provider %s for %s %s", name_str, symbol, interval)
+        try:
+            result = await provider.fetch(symbol, interval, limit)
+        except Exception as e:
+            logger.warning("provider %s raised, falling back: %s", name_str, e)
+            tried.append(name_str)
+            continue
 
         if result:
             logger.debug(
                 "provider %s returned %d candles for %s %s",
-                provider.name,
+                name_str,
                 len(result),
                 symbol,
                 interval,
@@ -214,9 +235,9 @@ async def fetch(
                 cache.set(symbol, interval, limit, result)
             return _candles_to_dataframe(result) if as_dataframe else result
 
-        tried.append(provider.name)
+        tried.append(name_str)
         logger.warning(
-            "provider %s returned no data for %s %s", provider.name, symbol, interval
+            "provider %s returned no data for %s %s", name_str, symbol, interval
         )
 
     logger.error(
