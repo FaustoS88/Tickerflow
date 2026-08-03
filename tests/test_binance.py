@@ -7,8 +7,8 @@ import re
 import pytest
 from aioresponses import aioresponses
 
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.binance import BinanceProvider
+from tickerflow.models import Candle
+from tickerflow.providers.binance import BinanceProvider
 
 _KLINES_RE = re.compile(r"https://api\.binance\.com/api/v3/klines.*")
 

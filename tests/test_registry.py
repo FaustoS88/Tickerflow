@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from ohlcv_router.providers.binance import BinanceProvider
-from ohlcv_router.providers.yfinance import YFinanceProvider
-from ohlcv_router.registry import pick
+from tickerflow.providers.binance import BinanceProvider
+from tickerflow.providers.yfinance import YFinanceProvider
+from tickerflow.registry import pick
 
 
 # ---------------------------------------------------------------------------

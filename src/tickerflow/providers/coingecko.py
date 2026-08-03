@@ -15,8 +15,8 @@ import re
 
 import aiohttp
 
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.base import OHLCVProvider
+from tickerflow.models import Candle
+from tickerflow.providers.base import OHLCVProvider
 
 logger = logging.getLogger(__name__)
 

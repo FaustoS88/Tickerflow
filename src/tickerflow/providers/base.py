@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from ohlcv_router.models import Candle
+from tickerflow.models import Candle
 
 
 class OHLCVProvider(ABC):
@@ -42,6 +42,6 @@ class OHLCVProvider(ABC):
                       returned oldest-first).
 
         Returns:
-            A list of :class:`~ohlcv_router.models.Candle` objects, oldest first,
+            A list of :class:`~tickerflow.models.Candle` objects, oldest first,
             or ``None`` if the symbol is not available on this provider.
         """

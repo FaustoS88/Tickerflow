@@ -7,8 +7,8 @@ import re
 import pytest
 from aioresponses import aioresponses
 
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.coingecko import CoinGeckoProvider, _base_currency, _coin_id
+from tickerflow.models import Candle
+from tickerflow.providers.coingecko import CoinGeckoProvider, _base_currency, _coin_id
 
 _OHLC_RE = re.compile(r"https://api\.coingecko\.com/api/v3/coins/.*/ohlc.*")
 

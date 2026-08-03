@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from ohlcv_router import cache
-from ohlcv_router.models import Candle
+from tickerflow import cache
+from tickerflow.models import Candle
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -182,7 +182,7 @@ async def test_registry_fetch_populates_cache(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.delenv("OHLCV_CACHE_ENABLED", raising=False)
     candles = _candles(5)
 
-    from ohlcv_router import registry
+    from tickerflow import registry
     mock_provider = MagicMock()
     mock_provider.name = "mock"
     mock_provider.supports.return_value = True
@@ -200,7 +200,7 @@ async def test_registry_fetch_uses_cache_on_second_call(monkeypatch: pytest.Monk
     monkeypatch.delenv("OHLCV_CACHE_ENABLED", raising=False)
     candles = _candles(5)
 
-    from ohlcv_router import registry
+    from tickerflow import registry
     mock_provider = MagicMock()
     mock_provider.name = "mock"
     mock_provider.supports.return_value = True
@@ -219,7 +219,7 @@ async def test_registry_fetch_skips_cache_when_disabled(monkeypatch: pytest.Monk
     monkeypatch.setenv("OHLCV_CACHE_ENABLED", "false")
     candles = _candles(5)
 
-    from ohlcv_router import registry
+    from tickerflow import registry
     mock_provider = MagicMock()
     mock_provider.name = "mock"
     mock_provider.supports.return_value = True

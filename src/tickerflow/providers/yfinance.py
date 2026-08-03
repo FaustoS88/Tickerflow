@@ -8,10 +8,10 @@ import re
 
 import yfinance as yf
 
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.base import OHLCVProvider
+from tickerflow.models import Candle
+from tickerflow.providers.base import OHLCVProvider
 
-# ohlcv-hub interval → yfinance interval
+# tickerflow interval → yfinance interval
 _INTERVAL_MAP: dict[str, str] = {
     "1m":  "1m",
     "5m":  "5m",

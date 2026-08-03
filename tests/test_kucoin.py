@@ -7,8 +7,8 @@ import re
 import pytest
 from aioresponses import aioresponses
 
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.kucoin import KuCoinProvider, _normalise
+from tickerflow.models import Candle
+from tickerflow.providers.kucoin import KuCoinProvider, _normalise
 
 _API_RE = re.compile(r"https://api\.kucoin\.com/api/v1/market/candles.*")
 

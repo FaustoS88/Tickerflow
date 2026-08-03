@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.finnhub import FinnhubProvider, _to_forex_symbol
+from tickerflow.models import Candle
+from tickerflow.providers.finnhub import FinnhubProvider, _to_forex_symbol
 
 # ---------------------------------------------------------------------------
 # Helpers

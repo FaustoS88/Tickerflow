@@ -15,7 +15,7 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ohlcv_router.models import Candle
+    from tickerflow.models import Candle
 
 # TTL in seconds, keyed by interval string
 _TTL: dict[str, int] = {

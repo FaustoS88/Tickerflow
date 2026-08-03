@@ -6,12 +6,12 @@ import re
 
 import aiohttp
 
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.base import OHLCVProvider
+from tickerflow.models import Candle
+from tickerflow.providers.base import OHLCVProvider
 
 _KLINES_URL = "https://api.binance.com/api/v3/klines"
 
-# Intervals accepted by Binance that ohlcv-hub exposes
+# Intervals accepted by Binance that tickerflow exposes
 _VALID_INTERVALS = frozenset(
     {"1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w", "1M"}
 )

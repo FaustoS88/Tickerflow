@@ -4,7 +4,7 @@ Requires a free Finnhub API key: https://finnhub.io/dashboard
 Set the ``FINNHUB_API_KEY`` environment variable before use.
 
 Install the optional dep before use:
-    pip install "ohlcv-hub[finnhub]"
+    pip install "tickerflow[finnhub]"
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ import os
 import re
 import time
 
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.base import OHLCVProvider
+from tickerflow.models import Candle
+from tickerflow.providers.base import OHLCVProvider
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class FinnhubProvider(OHLCVProvider):
 
     The ``4h`` interval is not offered by Finnhub and returns ``None``.
 
-    Requires the ``finnhub-python`` package (``pip install "ohlcv-hub[finnhub]"``)
+    Requires the ``finnhub-python`` package (``pip install "tickerflow[finnhub]"``)
     and a free API key from https://finnhub.io/dashboard set as
     ``FINNHUB_API_KEY``.
     """

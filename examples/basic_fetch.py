@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 
-from ohlcv_router import fetch
+from tickerflow import fetch
 
 
 async def main() -> None:
