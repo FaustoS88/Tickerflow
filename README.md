@@ -20,7 +20,7 @@ candles = await fetch("EURUSD")    # forex   → yfinance → Finnhub
 
 One function. Any ticker. Any asset class. If the first provider fails, the next one picks up — automatically. No API keys needed for basic use.
 
-![demo](assets/demo.gif)
+![demo](https://raw.githubusercontent.com/FaustoS88/Tickerflow/main/assets/demo.gif)
 
 ## Install
 
@@ -133,7 +133,7 @@ WM.TO    →  yfinance  →  Finnhub
 EURUSD   →  yfinance  →  Finnhub
 ```
 
-![fallback](assets/fallback.gif)
+![fallback](https://raw.githubusercontent.com/FaustoS88/Tickerflow/main/assets/fallback.gif)
 
 | Provider  | Latency     | Key required | Asset classes       |
 |-----------|-------------|--------------|---------------------|
@@ -205,7 +205,7 @@ See [examples/](examples/) for runnable scripts:
 
 ## Roadmap
 
-**v0.2.0** (current)
+**Shipped in v0.2**
 - pandas DataFrame output
 - `tickerflow serve` — self-hosted FastAPI market data API
 - `tickerflow chart` — terminal candlestick charts
