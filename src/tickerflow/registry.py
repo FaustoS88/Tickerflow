@@ -11,10 +11,14 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import TYPE_CHECKING
 
-from ohlcv_router import cache
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.base import OHLCVProvider
+from tickerflow import cache
+from tickerflow.models import Candle
+from tickerflow.providers.base import OHLCVProvider
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +40,7 @@ _FOREX_RE = re.compile(r"^[A-Z]{6}$")
 def _get_binance() -> OHLCVProvider:
     global _binance
     if _binance is None:
-        from ohlcv_router.providers.binance import BinanceProvider  # noqa: PLC0415
+        from tickerflow.providers.binance import BinanceProvider  # noqa: PLC0415
         _binance = BinanceProvider()
     return _binance
 
@@ -44,7 +48,7 @@ def _get_binance() -> OHLCVProvider:
 def _get_coingecko() -> OHLCVProvider:
     global _coingecko
     if _coingecko is None:
-        from ohlcv_router.providers.coingecko import CoinGeckoProvider  # noqa: PLC0415
+        from tickerflow.providers.coingecko import CoinGeckoProvider  # noqa: PLC0415
         _coingecko = CoinGeckoProvider()
     return _coingecko
 
@@ -52,7 +56,7 @@ def _get_coingecko() -> OHLCVProvider:
 def _get_kraken() -> OHLCVProvider:
     global _kraken
     if _kraken is None:
-        from ohlcv_router.providers.kraken import KrakenProvider  # noqa: PLC0415
+        from tickerflow.providers.kraken import KrakenProvider  # noqa: PLC0415
         _kraken = KrakenProvider()
     return _kraken
 
@@ -60,7 +64,7 @@ def _get_kraken() -> OHLCVProvider:
 def _get_kucoin() -> OHLCVProvider:
     global _kucoin
     if _kucoin is None:
-        from ohlcv_router.providers.kucoin import KuCoinProvider  # noqa: PLC0415
+        from tickerflow.providers.kucoin import KuCoinProvider  # noqa: PLC0415
         _kucoin = KuCoinProvider()
     return _kucoin
 
@@ -68,7 +72,7 @@ def _get_kucoin() -> OHLCVProvider:
 def _get_yfinance() -> OHLCVProvider:
     global _yfinance
     if _yfinance is None:
-        from ohlcv_router.providers.yfinance import YFinanceProvider  # noqa: PLC0415
+        from tickerflow.providers.yfinance import YFinanceProvider  # noqa: PLC0415
         _yfinance = YFinanceProvider()
     return _yfinance
 
@@ -76,7 +80,7 @@ def _get_yfinance() -> OHLCVProvider:
 def _get_tiingo() -> OHLCVProvider:
     global _tiingo
     if _tiingo is None:
-        from ohlcv_router.providers.tiingo import TiingoProvider  # noqa: PLC0415
+        from tickerflow.providers.tiingo import TiingoProvider  # noqa: PLC0415
         _tiingo = TiingoProvider()
     return _tiingo
 
@@ -84,7 +88,7 @@ def _get_tiingo() -> OHLCVProvider:
 def _get_finnhub() -> OHLCVProvider:
     global _finnhub
     if _finnhub is None:
-        from ohlcv_router.providers.finnhub import FinnhubProvider  # noqa: PLC0415
+        from tickerflow.providers.finnhub import FinnhubProvider  # noqa: PLC0415
         _finnhub = FinnhubProvider()
     return _finnhub
 
@@ -119,25 +123,65 @@ def pick(symbol: str) -> list[OHLCVProvider]:
     return [_get_binance(), _get_coingecko(), _get_kraken(), _get_kucoin(), _get_yfinance(), _get_tiingo(), _get_finnhub()]
 
 
+def _candles_to_dataframe(candles: list[Candle]) -> "pd.DataFrame":
+    """Convert a list of Candle objects to a pandas DataFrame.
+
+    Raises ImportError with an install hint if pandas is not available.
+    """
+    try:
+        import pandas as pd  # noqa: PLC0415
+    except ImportError:
+        raise ImportError(
+            "pandas is required for DataFrame output. "
+            "Install it with: pip install tickerflow[pandas]"
+        ) from None
+
+    columns = ["time", "open", "high", "low", "close", "volume"]
+
+    if not candles:
+        return pd.DataFrame(columns=columns)
+
+    df = pd.DataFrame(
+        [
+            {
+                "time": c.time,
+                "open": c.open,
+                "high": c.high,
+                "low": c.low,
+                "close": c.close,
+                "volume": c.volume,
+            }
+            for c in candles
+        ]
+    )
+    df["time"] = pd.to_datetime(df["time"], unit="s", utc=True)
+    return df
+
+
 async def fetch(
     symbol: str,
     interval: str = "1d",
     limit: int = 100,
-) -> list[Candle] | None:
+    *,
+    as_dataframe: bool = False,
+) -> "list[Candle] | pd.DataFrame | None":
     """Fetch OHLCV data for *symbol*, trying providers in order.
 
     Returns the first successful result, or ``None`` if all providers fail.
 
     Args:
-        symbol:   Ticker symbol (e.g. ``BTCUSDT``, ``AAPL``, ``EURUSD``, ``WM.TO``).
-        interval: Bar interval — ``1m``, ``5m``, ``15m``, ``1h``, ``4h``, ``1d``, ``1w``.
-        limit:    Number of bars to return (most recent, oldest-first).
+        symbol:       Ticker symbol (e.g. ``BTCUSDT``, ``AAPL``, ``EURUSD``, ``WM.TO``).
+        interval:     Bar interval — ``1m``, ``5m``, ``15m``, ``1h``, ``4h``, ``1d``, ``1w``.
+        limit:        Number of bars to return (most recent, oldest-first).
+        as_dataframe: If True, return a ``pandas.DataFrame`` instead of a list of
+                      :class:`~tickerflow.models.Candle` objects. Requires
+                      ``pip install tickerflow[pandas]``.
     """
     if cache.is_enabled():
         cached = cache.get(symbol, interval, limit)
         if cached is not None:
             logger.debug("cache hit for %s %s (limit=%d)", symbol, interval, limit)
-            return cached
+            return _candles_to_dataframe(cached) if as_dataframe else cached
 
     chain = pick(symbol)
     tried: list[str] = []
@@ -160,7 +204,7 @@ async def fetch(
             )
             if cache.is_enabled():
                 cache.set(symbol, interval, limit, result)
-            return result
+            return _candles_to_dataframe(result) if as_dataframe else result
 
         tried.append(provider.name)
         logger.warning(
@@ -182,7 +226,7 @@ async def teardown() -> None:
     Call this before the event loop exits to avoid 'Unclosed client session'
     warnings at process shutdown.
     """
-    from ohlcv_router.providers import binance as _bm  # noqa: PLC0415
+    from tickerflow.providers import binance as _bm  # noqa: PLC0415
 
     if _bm._session is not None and not _bm._session.closed:
         await _bm._session.close()

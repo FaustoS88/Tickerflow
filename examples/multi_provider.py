@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from ohlcv_router.registry import fetch, pick
+from tickerflow.registry import fetch, pick
 
 logging.basicConfig(level=logging.WARNING)  # suppress provider debug noise
 

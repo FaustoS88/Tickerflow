@@ -13,8 +13,8 @@ import re
 
 import requests
 
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.base import OHLCVProvider
+from tickerflow.models import Candle
+from tickerflow.providers.base import OHLCVProvider
 
 _BASE_URL = "https://api.tiingo.com/tiingo/daily"
 

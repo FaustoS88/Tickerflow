@@ -3,21 +3,30 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ohlcv-router"
-version = "0.1.2"
-description = "Async Python library for fetching OHLCV market data from multiple free providers"
+name = "tickerflow"
+version = "0.2.0"
+description = "One async Python call for crypto, stocks, and forex OHLCV data — automatic provider routing, zero API keys"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
 authors = [{ name = "FaustoS88" }]
-keywords = ["ohlcv", "market-data", "trading", "finance", "binance", "yfinance", "tiingo", "finnhub"]
+keywords = [
+    "ohlcv", "market-data", "trading", "finance",
+    "binance", "yfinance", "tiingo", "finnhub",
+    "ccxt-alternative", "yfinance-alternative",
+    "stock-data", "forex-data", "crypto-data",
+    "no-api-key", "async-python", "pydantic-ai",
+]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Office/Business :: Financial",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Framework :: FastAPI",
 ]
 dependencies = [
     "aiohttp>=3.9",
@@ -29,16 +38,35 @@ dependencies = [
 [project.optional-dependencies]
 tiingo = ["requests>=2.31"]
 finnhub = ["finnhub-python>=2.4"]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.4", "aioresponses>=0.7", "build>=1.0"]
+pandas = ["pandas>=2.0"]
+chart = ["plotext>=5.2"]
+serve = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "httpx>=0.27"]
+ai = ["pydantic-ai>=2.0.0"]
+all = [
+    "tickerflow[tiingo,finnhub,pandas,chart,serve,ai]",
+]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+    "aioresponses>=0.7",
+    "build>=1.0",
+    "pandas>=2.0",
+    "fastapi>=0.110",
+    "httpx>=0.27",
+    "plotext>=5.2",
+]
 
 [project.scripts]
-ohlcv = "ohlcv_router.cli:main"
+tickerflow = "tickerflow.cli:main"
 
 [project.urls]
-Repository = "https://github.com/FaustoS88/ohlcv-router"
+Repository = "https://github.com/FaustoS88/tickerflow"
+Documentation = "https://github.com/FaustoS88/tickerflow#readme"
+Changelog = "https://github.com/FaustoS88/tickerflow/blob/main/CHANGELOG.md"
 
 [tool.setuptools.package-data]
-"ohlcv_router" = ["py.typed"]
+"tickerflow" = ["py.typed"]
 
 [tool.ruff]
 line-length = 100

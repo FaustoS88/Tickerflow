@@ -7,8 +7,8 @@ import re
 import pytest
 from aioresponses import aioresponses
 
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.kraken import KrakenProvider, _normalise
+from tickerflow.models import Candle
+from tickerflow.providers.kraken import KrakenProvider, _normalise
 
 _OHLC_RE = re.compile(r"https://api\.kraken\.com/0/public/OHLC.*")
 

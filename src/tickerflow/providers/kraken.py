@@ -14,8 +14,8 @@ import re
 
 import aiohttp
 
-from ohlcv_router.models import Candle
-from ohlcv_router.providers.base import OHLCVProvider
+from tickerflow.models import Candle
+from tickerflow.providers.base import OHLCVProvider
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ _BASE_URL = "https://api.kraken.com/0/public/OHLC"
 
 _CRYPTO_RE = re.compile(r"^[A-Z]{2,}(USDT|USDC|BTC|ETH|BNB)$")
 
-# ohlcv-hub interval → Kraken interval (minutes)
+# tickerflow interval → Kraken interval (minutes)
 _INTERVAL_MAP: dict[str, int] = {
     "1m": 1,
     "5m": 5,
