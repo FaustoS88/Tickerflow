@@ -176,7 +176,7 @@ def serve(host: str, port: int, reload: bool) -> None:
     except ImportError:
         raise click.ClickException(
             "uvicorn is required for the server. "
-            "Install with: pip install tickerflow[serve]"
+            "Install with: pip install \"tickerflow[serve]\""
         )
 
     click.echo(f"Starting tickerflow API server on {host}:{port}")

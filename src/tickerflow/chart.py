@@ -34,7 +34,7 @@ def render_chart(
     except ImportError:
         raise ImportError(
             "plotext is required for terminal charts. "
-            "Install it with: pip install tickerflow[chart]"
+            "Install it with: pip install \"tickerflow[chart]\""
         ) from None
 
     if not candles:
@@ -42,8 +42,9 @@ def render_chart(
         return
 
     # Prepare data
+    plt.date_form("d/m/Y")
     dates = [
-        datetime.fromtimestamp(c.time, tz=UTC).strftime("%m/%d")
+        datetime.fromtimestamp(c.time, tz=UTC).strftime("%d/%m/%Y")
         for c in candles
     ]
     closes = [c.close for c in candles]

@@ -31,11 +31,11 @@ pip install tickerflow
 Extras for power users:
 
 ```bash
-pip install tickerflow[pandas]   # DataFrame output
-pip install tickerflow[serve]    # self-hosted API server
-pip install tickerflow[chart]    # terminal charts
-pip install tickerflow[ai]       # Pydantic AI integration
-pip install tickerflow[all]      # everything
+pip install "tickerflow[pandas]"   # DataFrame output
+pip install "tickerflow[serve]"    # self-hosted API server
+pip install "tickerflow[chart]"    # terminal charts
+pip install "tickerflow[ai]"       # Pydantic AI integration
+pip install "tickerflow[all]"      # everything
 ```
 
 ## Quick Start
@@ -87,7 +87,7 @@ tickerflow chart BTCUSDT 1d 30
 
 Displays a price chart with close/high/low lines and a volume subplot. Green for up, red for down. Fits your terminal width automatically.
 
-Requires: `pip install tickerflow[chart]`
+Requires: `pip install "tickerflow[chart]"`
 
 ## Self-Hosted API
 
@@ -107,7 +107,7 @@ curl localhost:8000/health
 
 Returns structured JSON — plug it into any frontend, dashboard, or automation. No rate limit, no vendor lock-in, runs on your machine.
 
-Requires: `pip install tickerflow[serve]`
+Requires: `pip install "tickerflow[serve]"`
 
 ## DataFrame Output
 
@@ -120,7 +120,7 @@ print(df.describe())
 
 Returns a `pandas.DataFrame` with columns `time` (UTC datetime), `open`, `high`, `low`, `close`, `volume`.
 
-Requires: `pip install tickerflow[pandas]`
+Requires: `pip install "tickerflow[pandas]"`
 
 ## Provider Routing
 
@@ -186,7 +186,7 @@ async def fetch_market_data(ctx, symbol: str, interval: str = "1d", limit: int =
 
 See [examples/pydantic_ai_agent.py](examples/pydantic_ai_agent.py) for a complete working agent.
 
-Requires: `pip install tickerflow[ai]`
+Requires: `pip install "tickerflow[ai]"`
 
 ## Why This Exists
 

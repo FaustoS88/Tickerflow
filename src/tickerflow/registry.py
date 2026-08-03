@@ -142,7 +142,7 @@ def _candles_to_dataframe(candles: list[Candle]) -> pd.DataFrame:
     except ImportError:
         raise ImportError(
             "pandas is required for DataFrame output. "
-            "Install it with: pip install tickerflow[pandas]"
+            'Install it with: pip install "tickerflow[pandas]"'
         ) from None
 
     columns = ["time", "open", "high", "low", "close", "volume"]

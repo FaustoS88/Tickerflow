@@ -1,7 +1,7 @@
 """Example — fetch OHLCV data as a pandas DataFrame for quick analysis.
 
 Install pandas first:
-    pip install tickerflow[pandas]
+    pip install "tickerflow[pandas]"
 
 Run:
     python examples/pandas_output.py

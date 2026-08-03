@@ -4,7 +4,7 @@ This agent can answer natural language questions about market data by
 fetching live OHLCV candles using tickerflow under the hood.
 
 Install:
-    pip install tickerflow[ai]
+    pip install "tickerflow[ai]"
 
 Set your OpenRouter API key:
     export OPENROUTER_API_KEY=sk-or-...
