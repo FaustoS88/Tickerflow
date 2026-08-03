@@ -206,7 +206,7 @@ async def fetch(
                 continue
             try:
                 provider = _FACTORIES[name]()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 — any import/init failure must fall back, not crash
                 logger.warning("provider %s unavailable, skipping: %s", name, e)
                 tried.append(name)
                 continue
@@ -218,7 +218,7 @@ async def fetch(
         logger.debug("trying provider %s for %s %s", name_str, symbol, interval)
         try:
             result = await provider.fetch(symbol, interval, limit)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — any provider error must fall back, not crash
             logger.warning("provider %s raised, falling back: %s", name_str, e)
             tried.append(name_str)
             continue
@@ -250,20 +250,26 @@ async def fetch(
 
 
 async def teardown() -> None:
-    """Close any open provider sessions (e.g. aiohttp).
+    """Close open provider sessions (e.g. aiohttp).
 
-    Call this before the event loop exits to avoid 'Unclosed client session'
-    warnings at process shutdown.
+    Only touches providers that were actually instantiated, so a crypto-only
+    run never imports yfinance at process shutdown.
     """
-    import tickerflow.providers.binance as _bm
-    import tickerflow.providers.coingecko as _cg
-    import tickerflow.providers.finnhub as _fh
-    import tickerflow.providers.kraken as _kr
-    import tickerflow.providers.kucoin as _kc
-    import tickerflow.providers.tiingo as _tg
-    import tickerflow.providers.yfinance as _yf
+    import importlib
 
-    for mod in (_bm, _cg, _fh, _kr, _kc, _tg, _yf):
+    _instances = [
+        (_binance, "tickerflow.providers.binance"),
+        (_coingecko, "tickerflow.providers.coingecko"),
+        (_kraken, "tickerflow.providers.kraken"),
+        (_kucoin, "tickerflow.providers.kucoin"),
+        (_yfinance, "tickerflow.providers.yfinance"),
+        (_tiingo, "tickerflow.providers.tiingo"),
+        (_finnhub, "tickerflow.providers.finnhub"),
+    ]
+    for instance, mod_path in _instances:
+        if instance is None:
+            continue
+        mod = importlib.import_module(mod_path)
         session = getattr(mod, "_session", None)
         if session is not None and not session.closed:
             await session.close()
