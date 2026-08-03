@@ -2,12 +2,12 @@
 
 **One `await fetch()` call. Crypto, stocks, forex. Zero API keys. Automatic provider fallback.**
 
-[![CI](https://github.com/FaustoS88/tickerflow/actions/workflows/ci.yml/badge.svg)](https://github.com/FaustoS88/tickerflow/actions/workflows/ci.yml)
+[![CI](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml/badge.svg)](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/tickerflow.svg)](https://pypi.org/project/tickerflow/)
 [![Downloads](https://img.shields.io/pypi/dm/tickerflow.svg)](https://pypi.org/project/tickerflow/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/FaustoS88/tickerflow?style=social)](https://github.com/FaustoS88/tickerflow)
+[![GitHub Stars](https://img.shields.io/github/stars/FaustoS88/Tickerflow?style=social)](https://github.com/FaustoS88/Tickerflow)
 
 ---
 
@@ -223,7 +223,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, how to add provide
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=FaustoS88/tickerflow&type=Date)](https://star-history.com/#FaustoS88/tickerflow&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=FaustoS88/Tickerflow&type=Date)](https://star-history.com/#FaustoS88/Tickerflow&Date)
 
 ## License
 
