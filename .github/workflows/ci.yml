@@ -22,7 +22,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pip install -e ".[dev,tiingo,finnhub]"
+        run: pip install -e ".[dev,all]"
 
       - name: Lint
         run: ruff check src tests

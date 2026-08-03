@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from pydantic_ai.models.test import TestModel
 
-from examples.pydantic_ai_agent import MarketAnalysis, create_agent
-from tickerflow.models import Candle
+if TYPE_CHECKING:
+    from tickerflow.models import Candle
 
 
 @pytest.fixture
 def sample_candles() -> list[Candle]:
+    from tickerflow.models import Candle
+
     return [
         Candle(time=1_700_000_000, open=100.0, high=110.0, low=95.0, close=105.0, volume=1000.0),
         Candle(time=1_700_086_400, open=105.0, high=115.0, low=100.0, close=112.0, volume=1500.0),
@@ -21,6 +23,11 @@ def sample_candles() -> list[Candle]:
 
 @pytest.mark.asyncio
 async def test_pydantic_ai_agent_with_test_model(sample_candles: list[Candle]) -> None:
+    pytest.importorskip("pydantic_ai")
+    from pydantic_ai.models.test import TestModel
+
+    from examples.pydantic_ai_agent import MarketAnalysis, create_agent
+
     expected_data = {
         "symbol": "BTCUSDT",
         "interval": "1d",
@@ -49,6 +56,11 @@ async def test_pydantic_ai_agent_with_test_model(sample_candles: list[Candle]) -
 
 @pytest.mark.asyncio
 async def test_agent_tool_fetch_market_data_empty() -> None:
+    pytest.importorskip("pydantic_ai")
+    from pydantic_ai.models.test import TestModel
+
+    from examples.pydantic_ai_agent import create_agent
+
     expected_data = {
         "symbol": "INVALID",
         "interval": "1d",
