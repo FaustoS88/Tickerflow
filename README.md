@@ -21,9 +21,7 @@ candles = await fetch("EURUSD")    # forex   → yfinance → Finnhub
 
 One function. Any ticker. Any asset class. If the first provider fails, the next one picks up — automatically. No API keys needed for basic use.
 
-<!-- When you have the GIF, uncomment this:
 ![demo](assets/demo.gif)
--->
 
 ## Install
 
@@ -221,9 +219,7 @@ See [`examples/`](examples/) for runnable scripts:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, how to add providers, and PR guidelines.
 
-## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=FaustoS88/Tickerflow&type=Date)](https://star-history.com/#FaustoS88/Tickerflow&Date)
 
 ## License
 
