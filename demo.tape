@@ -5,7 +5,7 @@
 
 Output assets/demo.gif
 
-Set Shell "zsh"
+Set Shell "bash"
 Set Theme "Dracula"
 Set FontFamily "JetBrains Mono"
 Set FontSize 14
