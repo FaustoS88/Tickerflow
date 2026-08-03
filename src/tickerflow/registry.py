@@ -234,15 +234,13 @@ async def teardown() -> None:
     Call this before the event loop exits to avoid 'Unclosed client session'
     warnings at process shutdown.
     """
-    from tickerflow.providers import (
-        binance as _bm,
-        coingecko as _cg,
-        finnhub as _fh,
-        kraken as _kr,
-        kucoin as _kc,
-        tiingo as _tg,
-        yfinance as _yf,
-    )
+    import tickerflow.providers.binance as _bm
+    import tickerflow.providers.coingecko as _cg
+    import tickerflow.providers.finnhub as _fh
+    import tickerflow.providers.kraken as _kr
+    import tickerflow.providers.kucoin as _kc
+    import tickerflow.providers.tiingo as _tg
+    import tickerflow.providers.yfinance as _yf
 
     for mod in (_bm, _cg, _fh, _kr, _kc, _tg, _yf):
         session = getattr(mod, "_session", None)

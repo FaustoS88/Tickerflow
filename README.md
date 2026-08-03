@@ -2,10 +2,10 @@
 
 **One `await fetch()` call. Crypto, stocks, forex. Zero API keys. Automatic provider fallback.**
 
-[![CI](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml/badge.svg)](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/tickerflow.svg)](https://pypi.org/project/tickerflow/)
-[![Python 3.11+](https://img.shields.io/pypi/pyversions/tickerflow.svg)](https://pypi.org/project/tickerflow/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/tickerflow?logo=pypi&logoColor=white&style=flat-square)](https://pypi.org/project/tickerflow/)
+[![Python](https://img.shields.io/pypi/pyversions/tickerflow?logo=python&logoColor=white&style=flat-square)](https://pypi.org/project/tickerflow/)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/FaustoS88/Tickerflow?style=social)](https://github.com/FaustoS88/Tickerflow)
 
 ---
