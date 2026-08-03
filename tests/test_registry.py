@@ -8,7 +8,6 @@ from tickerflow.providers.binance import BinanceProvider
 from tickerflow.providers.yfinance import YFinanceProvider
 from tickerflow.registry import pick
 
-
 # ---------------------------------------------------------------------------
 # Crypto
 # ---------------------------------------------------------------------------

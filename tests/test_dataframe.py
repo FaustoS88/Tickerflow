@@ -51,9 +51,11 @@ def test_dataframe_values_match(sample_candles: list[Candle]) -> None:
 
 def test_dataframe_missing_pandas(sample_candles: list[Candle]) -> None:
     """Verify a clear ImportError is raised when pandas is not installed."""
-    with patch.dict(sys.modules, {"pandas": None}):
-        with pytest.raises(ImportError, match="pip install tickerflow\\[pandas\\]"):
-            _candles_to_dataframe(sample_candles)
+    with (
+        patch.dict(sys.modules, {"pandas": None}),
+        pytest.raises(ImportError, match=r"pip install tickerflow\[pandas\]"),
+    ):
+        _candles_to_dataframe(sample_candles)
 
 
 def test_dataframe_empty_list() -> None:

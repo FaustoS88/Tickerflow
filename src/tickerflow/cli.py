@@ -19,7 +19,8 @@ import click
 from dotenv import load_dotenv
 
 from tickerflow.registry import fetch as _registry_fetch
-from tickerflow.registry import pick, teardown as _teardown
+from tickerflow.registry import pick
+from tickerflow.registry import teardown as _teardown
 
 load_dotenv()  # load .env from cwd or any parent directory
 
@@ -146,7 +147,7 @@ async def _run_chart(symbol: str, interval: str, limit: int) -> None:
         if not candles:
             raise click.ClickException(f"No data returned for {symbol} {interval}.")
 
-        from tickerflow.chart import render_chart  # noqa: PLC0415
+        from tickerflow.chart import render_chart
 
         render_chart(candles, symbol=symbol, interval=interval)
     finally:
@@ -168,7 +169,7 @@ def serve(host: str, port: int, reload: bool) -> None:
       GET /health
     """
     try:
-        import uvicorn  # noqa: PLC0415
+        import uvicorn
     except ImportError:
         raise click.ClickException(
             "uvicorn is required for the server. "

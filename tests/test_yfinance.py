@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
 import datetime
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -15,7 +15,7 @@ from tickerflow.providers.yfinance import YFinanceProvider, _to_yf_symbol
 def _make_df(n: int = 5) -> pd.DataFrame:
     """Return a minimal DataFrame shaped like yf.Ticker().history()."""
     dates = pd.date_range(
-        end=datetime.datetime.now(datetime.timezone.utc),
+        end=datetime.datetime.now(datetime.UTC),
         periods=n,
         freq="D",
         tz="UTC",

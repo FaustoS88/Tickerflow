@@ -77,7 +77,7 @@ class BinanceProvider(OHLCVProvider):
         if not data:
             return None
 
-        # Binance kline row layout (positions 0–5):
+        # Binance kline row layout (positions 0-5):
         # [open_time_ms, open, high, low, close, volume, close_time_ms, ...]
         return [
             Candle(

@@ -147,7 +147,7 @@ async def test_fetch_sends_kucoin_symbol_format(provider: KuCoinProvider) -> Non
     # aioresponses captures the actual URL called
     requests_made = mock.requests
     assert requests_made, "no request was made"
-    url_called = str(list(requests_made.keys())[0][1])
+    url_called = str(next(iter(requests_made.keys()))[1])
     assert "BTC-USDT" in url_called
 
 

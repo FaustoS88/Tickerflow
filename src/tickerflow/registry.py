@@ -2,7 +2,7 @@
 
 Asset class detection (rough rules, refined per provider):
 - Crypto  : ends in USDT / USDC / BTC / ETH / BNB / BUSD  (e.g. BTCUSDT)
-- Stocks  : 1–5 uppercase letters or starts with ^  (e.g. AAPL, ^GSPC)
+- Stocks  : 1-5 uppercase letters or starts with ^  (e.g. AAPL, ^GSPC)
 - Intl    : TICKER.EXCHANGE  (e.g. WM.TO, OGC.AX, RIO.L)
 - Forex   : exactly 6 uppercase letters  (e.g. EURUSD, GBPUSD)
 """
@@ -40,7 +40,7 @@ _FOREX_RE = re.compile(r"^[A-Z]{6}$")
 def _get_binance() -> OHLCVProvider:
     global _binance
     if _binance is None:
-        from tickerflow.providers.binance import BinanceProvider  # noqa: PLC0415
+        from tickerflow.providers.binance import BinanceProvider
         _binance = BinanceProvider()
     return _binance
 
@@ -48,7 +48,7 @@ def _get_binance() -> OHLCVProvider:
 def _get_coingecko() -> OHLCVProvider:
     global _coingecko
     if _coingecko is None:
-        from tickerflow.providers.coingecko import CoinGeckoProvider  # noqa: PLC0415
+        from tickerflow.providers.coingecko import CoinGeckoProvider
         _coingecko = CoinGeckoProvider()
     return _coingecko
 
@@ -56,7 +56,7 @@ def _get_coingecko() -> OHLCVProvider:
 def _get_kraken() -> OHLCVProvider:
     global _kraken
     if _kraken is None:
-        from tickerflow.providers.kraken import KrakenProvider  # noqa: PLC0415
+        from tickerflow.providers.kraken import KrakenProvider
         _kraken = KrakenProvider()
     return _kraken
 
@@ -64,7 +64,7 @@ def _get_kraken() -> OHLCVProvider:
 def _get_kucoin() -> OHLCVProvider:
     global _kucoin
     if _kucoin is None:
-        from tickerflow.providers.kucoin import KuCoinProvider  # noqa: PLC0415
+        from tickerflow.providers.kucoin import KuCoinProvider
         _kucoin = KuCoinProvider()
     return _kucoin
 
@@ -72,7 +72,7 @@ def _get_kucoin() -> OHLCVProvider:
 def _get_yfinance() -> OHLCVProvider:
     global _yfinance
     if _yfinance is None:
-        from tickerflow.providers.yfinance import YFinanceProvider  # noqa: PLC0415
+        from tickerflow.providers.yfinance import YFinanceProvider
         _yfinance = YFinanceProvider()
     return _yfinance
 
@@ -80,7 +80,7 @@ def _get_yfinance() -> OHLCVProvider:
 def _get_tiingo() -> OHLCVProvider:
     global _tiingo
     if _tiingo is None:
-        from tickerflow.providers.tiingo import TiingoProvider  # noqa: PLC0415
+        from tickerflow.providers.tiingo import TiingoProvider
         _tiingo = TiingoProvider()
     return _tiingo
 
@@ -88,7 +88,7 @@ def _get_tiingo() -> OHLCVProvider:
 def _get_finnhub() -> OHLCVProvider:
     global _finnhub
     if _finnhub is None:
-        from tickerflow.providers.finnhub import FinnhubProvider  # noqa: PLC0415
+        from tickerflow.providers.finnhub import FinnhubProvider
         _finnhub = FinnhubProvider()
     return _finnhub
 
@@ -120,16 +120,24 @@ def pick(symbol: str) -> list[OHLCVProvider]:
         return [_get_yfinance(), _get_finnhub()]
 
     # Unknown — try all
-    return [_get_binance(), _get_coingecko(), _get_kraken(), _get_kucoin(), _get_yfinance(), _get_tiingo(), _get_finnhub()]
+    return [
+        _get_binance(),
+        _get_coingecko(),
+        _get_kraken(),
+        _get_kucoin(),
+        _get_yfinance(),
+        _get_tiingo(),
+        _get_finnhub(),
+    ]
 
 
-def _candles_to_dataframe(candles: list[Candle]) -> "pd.DataFrame":
+def _candles_to_dataframe(candles: list[Candle]) -> pd.DataFrame:
     """Convert a list of Candle objects to a pandas DataFrame.
 
     Raises ImportError with an install hint if pandas is not available.
     """
     try:
-        import pandas as pd  # noqa: PLC0415
+        import pandas as pd
     except ImportError:
         raise ImportError(
             "pandas is required for DataFrame output. "
@@ -164,7 +172,7 @@ async def fetch(
     limit: int = 100,
     *,
     as_dataframe: bool = False,
-) -> "list[Candle] | pd.DataFrame | None":
+) -> list[Candle] | pd.DataFrame | None:
     """Fetch OHLCV data for *symbol*, trying providers in order.
 
     Returns the first successful result, or ``None`` if all providers fail.
@@ -226,7 +234,7 @@ async def teardown() -> None:
     Call this before the event loop exits to avoid 'Unclosed client session'
     warnings at process shutdown.
     """
-    from tickerflow.providers import binance as _bm  # noqa: PLC0415
+    from tickerflow.providers import binance as _bm
 
     if _bm._session is not None and not _bm._session.closed:
         await _bm._session.close()

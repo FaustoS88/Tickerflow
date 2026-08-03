@@ -10,7 +10,7 @@ Or via CLI:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ def render_chart(
     Raises ImportError with an install hint if plotext is not available.
     """
     try:
-        import plotext as plt  # noqa: PLC0415
+        import plotext as plt
     except ImportError:
         raise ImportError(
             "plotext is required for terminal charts. "
@@ -43,7 +43,7 @@ def render_chart(
 
     # Prepare data
     dates = [
-        datetime.fromtimestamp(c.time, tz=timezone.utc).strftime("%m/%d")
+        datetime.fromtimestamp(c.time, tz=UTC).strftime("%m/%d")
         for c in candles
     ]
     closes = [c.close for c in candles]

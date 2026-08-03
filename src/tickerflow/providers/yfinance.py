@@ -98,7 +98,7 @@ class YFinanceProvider(OHLCVProvider):
         ticker = _to_yf_symbol(symbol)
         bar_delta = _BAR_DURATION[interval]
         # Add 20 % headroom for weekends / market holidays
-        start = datetime.datetime.now(datetime.timezone.utc) - bar_delta * int(limit * 1.2 + 5)
+        start = datetime.datetime.now(datetime.UTC) - bar_delta * int(limit * 1.2 + 5)
 
         df = await asyncio.to_thread(self._download, ticker, yf_interval, start)
         if df is None or df.empty:
@@ -132,5 +132,5 @@ class YFinanceProvider(OHLCVProvider):
                 auto_adjust=True,
             )
             return df if not df.empty else None
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None

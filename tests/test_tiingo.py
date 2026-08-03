@@ -77,15 +77,18 @@ def test_supports(provider: TiingoProvider, symbol: str, expected: bool) -> None
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_for_intraday(provider: TiingoProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_fetch_returns_none_for_intraday(
+    provider: TiingoProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("TIINGO_API_KEY", "test-key")
     for interval in ("1m", "5m", "15m", "30m", "1h", "4h"):
-        result = await provider.fetch("AAPL", interval, 10)
-        assert result is None, f"Expected None for intraday interval {interval}"
+        assert await provider.fetch("AAPL", interval, 10) is None
 
 
 @pytest.mark.asyncio
-async def test_fetch_raises_without_api_key(provider: TiingoProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_fetch_raises_without_api_key(
+    provider: TiingoProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.delenv("TIINGO_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="TIINGO_API_KEY"):
         await provider.fetch("AAPL", "1d", 10)
@@ -342,7 +345,7 @@ def test_download_returns_list_on_success(monkeypatch: pytest.MonkeyPatch) -> No
         result = TiingoProvider._download(
             "AAPL",
             "daily",
-            datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
             "key",
         )
 
@@ -357,7 +360,7 @@ def test_download_returns_none_on_non_200(monkeypatch: pytest.MonkeyPatch) -> No
         result = TiingoProvider._download(
             "AAPL",
             "daily",
-            datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
             "key",
         )
 
@@ -369,7 +372,7 @@ def test_download_returns_none_on_exception() -> None:
         result = TiingoProvider._download(
             "AAPL",
             "daily",
-            datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
             "key",
         )
 

@@ -14,18 +14,19 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from tickerflow.registry import fetch as _fetch, pick, teardown
+from tickerflow.registry import fetch as _fetch
+from tickerflow.registry import pick, teardown
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):  # noqa: ARG001
+async def lifespan(app: FastAPI):
     yield
     await teardown()
 
 
 app = FastAPI(
     title="tickerflow",
-    description="Self-hosted market data API — crypto, stocks, forex via automatic provider routing.",
+    description="Self-hosted market data API — crypto, stocks, forex via automatic routing.",
     version="0.2.0",
     lifespan=lifespan,
 )

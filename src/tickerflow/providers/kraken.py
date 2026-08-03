@@ -74,13 +74,15 @@ class KrakenProvider(OHLCVProvider):
         params = {"pair": pair, "interval": kraken_interval}
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(_BASE_URL, params=params) as resp:
-                    if resp.status != 200:
-                        logger.warning("kraken HTTP %d for %s", resp.status, symbol)
-                        return None
-                    data = await resp.json(content_type=None)
-        except Exception as exc:
+            async with (
+                aiohttp.ClientSession() as session,
+                session.get(_BASE_URL, params=params) as resp,
+            ):
+                if resp.status != 200:
+                    logger.warning("kraken HTTP %d for %s", resp.status, symbol)
+                    return None
+                data = await resp.json(content_type=None)
+        except Exception as exc:  # noqa: BLE001
             logger.warning("kraken request failed for %s: %s", symbol, exc)
             return None
 

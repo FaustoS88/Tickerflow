@@ -101,13 +101,16 @@ class KuCoinProvider(OHLCVProvider):
         }
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(_BASE_URL, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status != 200:
-                        logger.warning("kucoin HTTP %d for %s", resp.status, kucoin_symbol)
-                        return None
-                    data = await resp.json()
-        except Exception as exc:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with (
+                aiohttp.ClientSession() as session,
+                session.get(_BASE_URL, params=params, timeout=timeout) as resp,
+            ):
+                if resp.status != 200:
+                    logger.warning("kucoin HTTP %d for %s", resp.status, kucoin_symbol)
+                    return None
+                data = await resp.json()
+        except Exception as exc:  # noqa: BLE001
             logger.warning("kucoin request failed for %s: %s", kucoin_symbol, exc)
             return None
 

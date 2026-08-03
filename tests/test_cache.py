@@ -15,7 +15,14 @@ from tickerflow.models import Candle
 
 def _candles(n: int = 3) -> list[Candle]:
     return [
-        Candle(time=1_700_000_000 + i * 86400, open=100.0, high=105.0, low=95.0, close=102.0, volume=1000.0)
+        Candle(
+            time=1_700_000_000 + i * 86400,
+            open=100.0,
+            high=105.0,
+            low=95.0,
+            close=102.0,
+            volume=1000.0,
+        )
         for i in range(n)
     ]
 

@@ -28,8 +28,7 @@ _BAR_DURATION: dict[str, datetime.timedelta] = {
     "1d": datetime.timedelta(days=1),
     "1w": datetime.timedelta(weeks=1),
 }
-
-# Tiingo covers US-listed stocks and ETFs: 1–5 uppercase letters, or exchange-suffixed
+# Tiingo covers US-listed stocks and ETFs: 1-5 uppercase letters, or exchange-suffixed
 _STOCK_RE     = re.compile(r"^[A-Z]{1,5}$")
 _INTL_STOCK_RE = re.compile(r"^[A-Z0-9]{1,7}\.[A-Z]{1,3}$")
 
@@ -69,7 +68,7 @@ class TiingoProvider(OHLCVProvider):
             )
 
         bar_delta = _BAR_DURATION[interval]
-        start = datetime.datetime.now(datetime.timezone.utc) - bar_delta * int(limit * 1.2 + 5)
+        start = datetime.datetime.now(datetime.UTC) - bar_delta * int(limit * 1.2 + 5)
 
         ticker = symbol.upper()
         rows = await asyncio.to_thread(
@@ -121,5 +120,5 @@ class TiingoProvider(OHLCVProvider):
                 return None
             data = resp.json()
             return data if isinstance(data, list) else None
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None

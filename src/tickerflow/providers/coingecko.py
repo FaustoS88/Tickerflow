@@ -2,8 +2,8 @@
 
 Uses the public ``/coins/{id}/ohlc`` endpoint. Granularity is determined
 automatically by CoinGecko based on the requested time window:
-  - 3–30 days  → 4-hour bars
-  - > 30 days  → daily bars
+  - 3-30 days  -> 4-hour bars
+  - > 30 days  -> daily bars
 
 Note: the OHLC endpoint does not include volume. All candles have ``volume=0``.
 """
@@ -50,8 +50,8 @@ _COIN_IDS: dict[str, str] = {
 }
 
 # CoinGecko granularity is automatic based on `days`:
-#   3–30  days → 4-hour bars
-#   > 30  days → daily bars
+#   3-30  days -> 4-hour bars
+#   > 30  days -> daily bars
 _INTERVAL_DAYS: dict[str, int] = {
     "4h": 30,   # 30 days at 4h granularity → up to 180 bars
     "1d": 90,   # 90 days at daily granularity → up to 90 bars
@@ -108,15 +108,20 @@ class CoinGeckoProvider(OHLCVProvider):
         params = {"vs_currency": "usd", "days": str(days)}
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params) as resp:
-                    if resp.status != 200:
-                        logger.warning(
-                            "coingecko HTTP %d for %s", resp.status, symbol
-                        )
-                        return None
-                    data = await resp.json(content_type=None)
-        except Exception as exc:
+            async with (
+                aiohttp.ClientSession() as session,
+                session.get(url, params=params) as resp,
+            ):
+                if resp.status != 200:
+                    logger.warning(
+                        "coingecko HTTP %d for %s (interval=%s)",
+                        resp.status,
+                        symbol,
+                        interval,
+                    )
+                    return None
+                data = await resp.json(content_type=None)
+        except Exception as exc:  # noqa: BLE001
             logger.warning("coingecko request failed for %s: %s", symbol, exc)
             return None
 

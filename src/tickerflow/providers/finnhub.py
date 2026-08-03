@@ -129,16 +129,20 @@ class FinnhubProvider(OHLCVProvider):
         api_key: str,
     ) -> dict | None:
         try:
-            import finnhub  # noqa: PLC0415
+            import finnhub
 
             data = finnhub.Client(api_key=api_key).stock_candles(
                 symbol, resolution, from_ts, to_ts
             )
             if data and data.get("s") != "ok":
-                logger.warning("finnhub stock_candles status=%s for %s", data.get("s"), symbol)
+                logger.warning(
+                    "finnhub stock_candles status=%s for %s", data.get("s"), symbol
+                )
             return data if data and data.get("s") == "ok" else None
-        except Exception as exc:
-            logger.warning("finnhub stock_candles raised %s: %s", type(exc).__name__, exc)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "finnhub stock_candles raised %s: %s", type(exc).__name__, exc
+            )
             return None
 
     @staticmethod
@@ -150,16 +154,18 @@ class FinnhubProvider(OHLCVProvider):
         api_key: str,
     ) -> dict | None:
         try:
-            import finnhub  # noqa: PLC0415
+            import finnhub
 
             fx_sym = _to_forex_symbol(symbol)
             data = finnhub.Client(api_key=api_key).forex_candles(
                 fx_sym, resolution, from_ts, to_ts
             )
             if data and data.get("s") != "ok":
-                logger.warning("finnhub forex_candles status=%s for %s", data.get("s"), fx_sym)
+                logger.warning(
+                    "finnhub forex_candles status=%s for %s", data.get("s"), fx_sym
+                )
             return data if data and data.get("s") == "ok" else None
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("finnhub forex_candles raised %s: %s", type(exc).__name__, exc)
             return None
 
