@@ -29,7 +29,7 @@ _BAR_DURATION: dict[str, datetime.timedelta] = {
     "1w": datetime.timedelta(weeks=1),
 }
 # Tiingo covers US-listed stocks and ETFs: 1-5 uppercase letters, or exchange-suffixed
-_STOCK_RE     = re.compile(r"^[A-Z]{1,5}$")
+_STOCK_RE     = re.compile(r"^\^?[A-Z]{1,5}$")
 _INTL_STOCK_RE = re.compile(r"^[A-Z0-9]{1,7}\.[A-Z]{1,3}$")
 
 

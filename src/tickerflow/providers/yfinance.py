@@ -33,7 +33,7 @@ _BAR_DURATION: dict[str, datetime.timedelta] = {
 
 _CRYPTO_RE    = re.compile(r"^[A-Z]{2,}(USDT|USDC|BTC|ETH|BNB|BUSD|FDUSD)$")
 _FOREX_RE     = re.compile(r"^[A-Z]{6}$")
-_STOCK_RE     = re.compile(r"^(\^[A-Z]+|[A-Z]{1,5})$")
+_STOCK_RE     = re.compile(r"^\^?[A-Z]{1,5}$")
 _INTL_STOCK_RE = re.compile(r"^[A-Z0-9]{1,7}\.[A-Z]{1,3}$")
 
 

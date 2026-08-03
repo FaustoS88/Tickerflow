@@ -32,7 +32,7 @@ _tiingo: OHLCVProvider | None = None
 _finnhub: OHLCVProvider | None = None
 
 _CRYPTO_RE = re.compile(r"^[A-Z]{2,}(USDT|USDC|BTC|ETH|BNB|BUSD|FDUSD)$")
-_STOCK_RE = re.compile(r"^(\^[A-Z]+|[A-Z]{1,5})$")
+_STOCK_RE = re.compile(r"^\^?[A-Z]{1,5}$")
 _INTL_STOCK_RE = re.compile(r"^[A-Z0-9]{1,7}\.[A-Z]{1,3}$")
 _FOREX_RE = re.compile(r"^[A-Z]{6}$")
 
@@ -234,7 +234,17 @@ async def teardown() -> None:
     Call this before the event loop exits to avoid 'Unclosed client session'
     warnings at process shutdown.
     """
-    from tickerflow.providers import binance as _bm
+    from tickerflow.providers import (
+        binance as _bm,
+        coingecko as _cg,
+        finnhub as _fh,
+        kraken as _kr,
+        kucoin as _kc,
+        tiingo as _tg,
+        yfinance as _yf,
+    )
 
-    if _bm._session is not None and not _bm._session.closed:
-        await _bm._session.close()
+    for mod in (_bm, _cg, _fh, _kr, _kc, _tg, _yf):
+        session = getattr(mod, "_session", None)
+        if session is not None and not session.closed:
+            await session.close()

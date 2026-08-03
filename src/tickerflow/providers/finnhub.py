@@ -42,7 +42,7 @@ _BAR_SECONDS: dict[str, int] = {
     "1w": 604_800,
 }
 
-_STOCK_RE = re.compile(r"^(\^[A-Z]+|[A-Z]{1,5})$")
+_STOCK_RE = re.compile(r"^\^?[A-Z]{1,5}$")
 _INTL_STOCK_RE = re.compile(r"^[A-Z0-9]{1,7}\.[A-Z]{1,3}$")
 _FOREX_RE = re.compile(r"^[A-Z]{6}$")
 

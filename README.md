@@ -4,8 +4,7 @@
 
 [![CI](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml/badge.svg)](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/tickerflow.svg)](https://pypi.org/project/tickerflow/)
-
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+[![Python 3.11+](https://img.shields.io/pypi/pyversions/tickerflow.svg)](https://pypi.org/project/tickerflow/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/FaustoS88/Tickerflow?style=social)](https://github.com/FaustoS88/Tickerflow)
 
@@ -102,7 +101,7 @@ Then:
 
 ```bash
 curl localhost:8000/ohlcv/BTCUSDT?interval=1d&limit=5
-curl localhost:8000/providers/AAPL
+curl localhost:8000/providers/BTCUSDT
 curl localhost:8000/health
 ```
 
@@ -133,6 +132,8 @@ AAPL     →  yfinance  →  Tiingo (daily/weekly)  →  Finnhub
 WM.TO    →  yfinance  →  Finnhub
 EURUSD   →  yfinance  →  Finnhub
 ```
+
+![fallback](assets/fallback.gif)
 
 | Provider  | Latency     | Key required | Asset classes       |
 |-----------|-------------|--------------|---------------------|
@@ -183,7 +184,7 @@ async def fetch_market_data(ctx, symbol: str, interval: str = "1d", limit: int =
     return f"{symbol}: O={last.open:.2f} H={last.high:.2f} L={last.low:.2f} C={last.close:.2f}"
 ```
 
-See [`examples/pydantic_ai_agent.py`](examples/pydantic_ai_agent.py) for a complete working agent.
+See [examples/pydantic_ai_agent.py](examples/pydantic_ai_agent.py) for a complete working agent.
 
 Requires: `pip install tickerflow[ai]`
 
@@ -195,12 +196,12 @@ This is the market data layer for my [Pydantic AI Pine Script Expert](https://gi
 
 ## Examples
 
-See [`examples/`](examples/) for runnable scripts:
+See [examples/](examples/) for runnable scripts:
 
-- [`basic_fetch.py`](examples/basic_fetch.py) — fetch candles for crypto, stock, and forex
-- [`multi_provider.py`](examples/multi_provider.py) — inspect provider chains and observe fallback
-- [`pandas_output.py`](examples/pandas_output.py) — DataFrame output for quick analysis
-- [`pydantic_ai_agent.py`](examples/pydantic_ai_agent.py) — AI agent with market data tools
+- [basic_fetch.py](examples/basic_fetch.py) — fetch candles for crypto, stock, and forex
+- [multi_provider.py](examples/multi_provider.py) — inspect provider chains and observe fallback
+- [pandas_output.py](examples/pandas_output.py) — DataFrame output for quick analysis
+- [pydantic_ai_agent.py](examples/pydantic_ai_agent.py) — AI agent with market data tools
 
 ## Roadmap
 
@@ -218,8 +219,6 @@ See [`examples/`](examples/) for runnable scripts:
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, how to add providers, and PR guidelines.
-
-
 
 ## License
 
