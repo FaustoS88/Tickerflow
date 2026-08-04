@@ -133,26 +133,26 @@ async def _run_fetch(
 @click.argument("symbol")
 @click.argument("interval", default="1d")
 @click.argument("limit", default=30, type=int)
-def chart(symbol: str, interval: str, limit: int) -> None:
+@click.option("--no-color", is_flag=True, default=False, help="Disable ANSI colors.")
+def chart(symbol: str, interval: str, limit: int, no_color: bool) -> None:
     """Render a terminal chart for SYMBOL.
 
     SYMBOL   Ticker symbol — e.g. BTCUSDT, AAPL, EURUSD\n
     INTERVAL Bar size      — 1m 5m 15m 1h 4h 1d 1w  (default: 1d)\n
     LIMIT    Number of bars to chart               (default: 30)
     """
-    asyncio.run(_run_chart(symbol.upper(), interval, limit))
+    asyncio.run(_run_chart(symbol.upper(), interval, limit, no_color=no_color))
 
 
-async def _run_chart(symbol: str, interval: str, limit: int) -> None:
+async def _run_chart(symbol: str, interval: str, limit: int, no_color: bool = False) -> None:
     try:
         candles = await _registry_fetch(symbol, interval, limit)
-
         if not candles:
-            raise click.ClickException(f"No data returned for {symbol} {interval}.")
+            raise click.ClickException(f"No data for {symbol}.")
 
-        from tickerflow.chart import render_chart
+        from tickerflow import chart
 
-        render_chart(candles, symbol=symbol, interval=interval)
+        click.echo(chart.render(candles, symbol, interval, color=not no_color if no_color else None))
     finally:
         await _teardown()
 

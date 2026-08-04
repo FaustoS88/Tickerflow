@@ -85,9 +85,9 @@ Render OHLCV data directly in your terminal with `tickerflow chart`:
 tickerflow chart BTCUSDT 1d 30
 ```
 
-Displays a price chart with close/high/low lines and a volume subplot. Green for up, red for down. Fits your terminal width automatically.
+Renders Unicode candlestick charts with ANSI green/red coloring and a volume pane — pure stdlib, zero dependencies. Supports `--no-color` and respects `NO_COLOR`.
 
-Requires: `pip install "tickerflow[chart]"`
+No extra install needed — included in the base package.
 
 ## Self-Hosted API
 
