@@ -59,7 +59,7 @@ def render(
     axis_w = max(len(_fmt(hi)), len(_fmt(lo))) + 1
 
     def row(price: float) -> int:  # 0 = top
-        return int(round((hi - price) / (hi - lo) * (rows - 1)))
+        return round((hi - price) / (hi - lo) * (rows - 1))
 
     grid = [[" "] * n for _ in range(rows)]
     codes = [[""] * n for _ in range(rows)]
@@ -93,7 +93,7 @@ def render(
     for r in range(vol_rows):
         line = _p("vol".rjust(axis_w) if r == 0 else " " * axis_w, _DIM, on) + " "
         for i, c in enumerate(candles):
-            h = min(int(round(c.volume / max_vol * vol_rows)), vol_rows)
+            h = min(round(c.volume / max_vol * vol_rows), vol_rows)
             filled = r >= vol_rows - h
             line += _p(_VOL, _GREEN if c.close >= c.open else _RED, on) if filled else " "
         out.append(line)
