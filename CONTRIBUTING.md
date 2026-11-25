@@ -74,7 +74,7 @@ In `src/tickerflow/registry.py`:
 
 ### 3. Add tests
 
-Create `tests/test_your_provider.py` with mocked HTTP responses using `aioresponses`.
+Create `tests/test_your_provider.py`. For an aiohttp provider, add its URL constant to the `upstream` fixture in `tests/conftest.py`, then set replies in each test with `upstream.reply(prefix, payload, status=...)`: the provider talks to a local server, never the network.
 
 ### 4. Update docs
 
