@@ -9,7 +9,7 @@ import time
 
 import pytest
 
-from tickerflow import registry
+from tickerflow import ProviderError, fetch
 from tickerflow.models import Candle
 from tickerflow.providers.base import OHLCVProvider
 from tickerflow.providers.binance import BinanceProvider
@@ -24,7 +24,16 @@ pytestmark = pytest.mark.skipif(
 
 _DAY = 86_400
 # Region blocks and rate limits on shared runner IPs say nothing about tickerflow
-_BLOCKED = re.compile(r"(\w+) HTTP (429|451)")
+_BLOCKED = re.compile(r"HTTP (429|451)")
+
+
+async def _or_skip_if_blocked(provider: OHLCVProvider, call: object) -> list[Candle] | None:
+    try:
+        return await call  # type: ignore[misc]
+    except ProviderError as e:
+        if blocked := _BLOCKED.fullmatch(str(e)):
+            pytest.skip(f"{provider.name} answered HTTP {blocked[1]} to this runner")
+        raise
 
 
 def _last_close(candles: list[Candle] | None, max_age: int) -> float:
@@ -46,12 +55,8 @@ def _last_close(candles: list[Candle] | None, max_age: int) -> float:
     ],
     ids=lambda p: getattr(p, "name", p),
 )
-async def test_ethbtc_is_priced_in_btc(
-    provider: OHLCVProvider, interval: str, caplog: pytest.LogCaptureFixture
-) -> None:
-    candles = await provider.fetch("ETHBTC", interval, 5)
-    if candles is None and (blocked := _BLOCKED.search(caplog.text)):
-        pytest.skip(f"{provider.name} answered HTTP {blocked[2]} to this runner")
+async def test_ethbtc_is_priced_in_btc(provider: OHLCVProvider, interval: str) -> None:
+    candles = await _or_skip_if_blocked(provider, provider.fetch("ETHBTC", interval, 5))
     close = _last_close(candles, 2 * _DAY)
     assert 0 < close < 1, f"{provider.name} served ETHBTC at {close}, not a BTC price"
 
@@ -59,14 +64,28 @@ async def test_ethbtc_is_priced_in_btc(
 async def test_fallback_chain_serves_ethbtc_from_the_first_exchange(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    caplog.set_level(logging.DEBUG, logger="tickerflow.registry")
-    close = _last_close(await registry.fetch("ETHBTC", "1d", 5), 2 * _DAY)
+    caplog.set_level(logging.WARNING, logger="tickerflow.registry")
+    candles = await fetch("ETHBTC", "1d", 5)
+    close = _last_close(candles, 2 * _DAY)
     assert 0 < close < 1, f"the chain served ETHBTC at {close}, not a BTC price"
     # CoinGecko has no 1d bars, so Kraken comes next when Binance turns this runner away
-    blocked = _BLOCKED.search(caplog.text)
-    expected = "kraken" if blocked and blocked[1] == "binance" else "binance"
-    served = re.search(r"provider (\w+) returned \d+ candles", caplog.text)
-    assert served and served[1] == expected, caplog.text
+    blocked = re.search(r"provider binance failed for ETHBTC 1d: HTTP (429|451)", caplog.text)
+    assert candles.provider == ("kraken" if blocked else "binance"), caplog.text
+
+
+@pytest.mark.parametrize("provider", [BinanceProvider(), KuCoinProvider()], ids=lambda p: p.name)
+async def test_a_date_range_is_paged_back(provider: OHLCVProvider) -> None:
+    # 2,000 hourly bars: two pages or more on both exchanges
+    end = int(time.time()) // 3_600 * 3_600 - 3 * _DAY
+    start = end - 2_000 * 3_600
+    candles = await _or_skip_if_blocked(
+        provider, provider.fetch_range("ETHBTC", "1h", start, end)
+    )
+    assert candles, "no bars"
+    times = [c.time for c in candles]
+    assert times == sorted(set(times)), "bars out of order or repeated"
+    assert start <= times[0] and times[-1] < end
+    assert len(times) > 1_900, f"{len(times)} bars for 2,000 hours"
 
 
 async def test_yfinance_serves_aapl() -> None:

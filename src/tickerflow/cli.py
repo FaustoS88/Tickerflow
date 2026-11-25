@@ -18,9 +18,10 @@ import json
 import click
 from dotenv import load_dotenv
 
+from tickerflow.errors import NoDataError
+from tickerflow.models import Candles
 from tickerflow.registry import fetch as _registry_fetch
 from tickerflow.registry import pick
-from tickerflow.registry import teardown as _teardown
 
 load_dotenv()  # load .env from cwd or any parent directory
 
@@ -79,54 +80,51 @@ async def _run_fetch(
     output_csv: bool,
     output_json: bool,
 ) -> None:
-    try:
-        if provider_name:
-            target = provider_name.lower()
-            names = [name for name in pick(symbol) if name == target]
-            if not names:
-                available = pick(symbol)
-                raise click.ClickException(
-                    f"Provider '{provider_name}' not in chain for {symbol}. "
-                    f"Available: {', '.join(available)}"
-                )
-            from tickerflow.registry import _FACTORIES
-            provider = _FACTORIES[names[0]]()
-            candles = await provider.fetch(symbol, interval, limit)
-        else:
-            candles = await _registry_fetch(symbol, interval, limit)
+    if provider_name and provider_name.lower() not in (available := pick(symbol)):
+        raise click.ClickException(
+            f"Provider '{provider_name}' not in chain for {symbol}. "
+            f"Available: {', '.join(available)}"
+        )
+    candles = await _fetch_or_fail(
+        symbol, interval, limit, [provider_name.lower()] if provider_name else None
+    )
 
-        if not candles:
-            raise click.ClickException(f"No data returned for {symbol} {interval}.")
-
-        if output_json:
-            rows = [
-                {
-                    "time": c.time,
-                    "open": c.open,
-                    "high": c.high,
-                    "low": c.low,
-                    "close": c.close,
-                    "volume": c.volume,
-                }
-                for c in candles
-            ]
-            click.echo(json.dumps(rows, indent=2))
-        elif output_csv:
-            click.echo("time,open,high,low,close,volume")
-            for c in candles:
-                click.echo(f"{c.time},{c.open},{c.high},{c.low},{c.close},{c.volume}")
-        else:
+    if output_json:
+        rows = [
+            {
+                "time": c.time,
+                "open": c.open,
+                "high": c.high,
+                "low": c.low,
+                "close": c.close,
+                "volume": c.volume,
+            }
+            for c in candles
+        ]
+        click.echo(json.dumps(rows, indent=2))
+    elif output_csv:
+        click.echo("time,open,high,low,close,volume")
+        for c in candles:
+            click.echo(f"{c.time},{c.open},{c.high},{c.low},{c.close},{c.volume}")
+    else:
+        click.echo(
+            f"\n{'time':>12}  {'open':>10}  {'high':>10}  "
+            f"{'low':>10}  {'close':>10}  {'volume':>14}"
+        )
+        for c in candles:
             click.echo(
-                f"\n{'time':>12}  {'open':>10}  {'high':>10}  "
-                f"{'low':>10}  {'close':>10}  {'volume':>14}"
+                f"{c.time:>12}  {c.open:>10.4f}  {c.high:>10.4f}  "
+                f"{c.low:>10.4f}  {c.close:>10.4f}  {c.volume:>14.2f}"
             )
-            for c in candles:
-                click.echo(
-                    f"{c.time:>12}  {c.open:>10.4f}  {c.high:>10.4f}  "
-                    f"{c.low:>10.4f}  {c.close:>10.4f}  {c.volume:>14.2f}"
-                )
-    finally:
-        await _teardown()
+
+
+async def _fetch_or_fail(
+    symbol: str, interval: str, limit: int, providers: list[str] | None = None
+) -> Candles:
+    try:
+        return await _registry_fetch(symbol, interval, limit, providers=providers)
+    except (NoDataError, ValueError) as e:
+        raise click.ClickException(str(e)) from None
 
 
 @main.command()
@@ -145,16 +143,11 @@ def chart(symbol: str, interval: str, limit: int, no_color: bool) -> None:
 
 
 async def _run_chart(symbol: str, interval: str, limit: int, no_color: bool = False) -> None:
-    try:
-        candles = await _registry_fetch(symbol, interval, limit)
-        if not candles:
-            raise click.ClickException(f"No data for {symbol}.")
+    candles = await _fetch_or_fail(symbol, interval, limit)
 
-        from tickerflow import chart
+    from tickerflow import chart
 
-        click.echo(chart.render(candles, symbol, interval, color=not no_color if no_color else None))
-    finally:
-        await _teardown()
+    click.echo(chart.render(candles, symbol, interval, color=not no_color if no_color else None))
 
 
 @main.command()

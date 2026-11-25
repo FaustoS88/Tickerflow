@@ -8,28 +8,20 @@ Endpoints:
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 import tickerflow
+from tickerflow.errors import NoDataError
 from tickerflow.registry import fetch as _fetch
-from tickerflow.registry import pick, teardown
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    yield
-    await teardown()
-
+from tickerflow.registry import pick
 
 app = FastAPI(
     title="tickerflow",
     description="Self-hosted market data API — crypto, stocks, forex via automatic routing.",
     version=tickerflow.__version__,
-    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -60,20 +52,18 @@ async def ohlcv(
 ) -> Any:
     """Fetch OHLCV candles for a symbol.
 
-    Returns a JSON object with symbol metadata and an array of candle objects.
+    Returns a JSON object with symbol metadata, the provider that served the
+    candles and an array of candle objects; 404 carries each provider's reason.
     """
-    candles = await _fetch(symbol.upper(), interval, limit)
-
-    if candles is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No data available for {symbol.upper()} at interval {interval}. "
-            f"All providers failed.",
-        )
+    try:
+        candles = await _fetch(symbol.upper(), interval, limit)
+    except NoDataError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from None
 
     return {
         "symbol": symbol.upper(),
         "interval": interval,
+        "provider": candles.provider,
         "count": len(candles),
         "candles": [
             {

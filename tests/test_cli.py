@@ -8,6 +8,7 @@ import pytest
 from click.testing import CliRunner
 
 from tickerflow.cli import main
+from tickerflow.errors import NoDataError
 from tickerflow.models import Candle
 
 
@@ -57,13 +58,13 @@ def test_fetch_csv_output(runner: CliRunner) -> None:
 # ---------------------------------------------------------------------------
 
 def test_fetch_with_valid_provider(runner: CliRunner) -> None:
-    mock_provider = AsyncMock(return_value=_candles(2))
-    mock_provider.name = "binance"
-    mock_provider.supports.return_value = True
-
-    with patch("tickerflow.cli.pick", return_value=["binance"]), patch("tickerflow.registry._FACTORIES", {"binance": lambda: mock_provider}):
-        result = runner.invoke(main, ["fetch", "BTCUSDT", "1d", "2", "--provider", "binance"])
+    with patch(
+        "tickerflow.cli._registry_fetch", new_callable=AsyncMock, return_value=_candles(2)
+    ) as fetch:
+        result = runner.invoke(main, ["fetch", "BTCUSDT", "1d", "2", "--provider", "Kraken"])
     assert result.exit_code == 0, result.output
+    assert "30000" in result.output
+    assert fetch.call_args.kwargs["providers"] == ["kraken"]
 
 
 def test_fetch_with_invalid_provider(runner: CliRunner) -> None:
@@ -81,8 +82,16 @@ def test_fetch_with_invalid_provider(runner: CliRunner) -> None:
 # Error cases
 # ---------------------------------------------------------------------------
 
-def test_fetch_no_data_exits_nonzero(runner: CliRunner) -> None:
-    with patch("tickerflow.cli._registry_fetch", new_callable=AsyncMock, return_value=None):
+def test_fetch_no_data_shows_each_reason(runner: CliRunner) -> None:
+    error = NoDataError("BTCUSDT", "1d", {"binance": "HTTP 451", "kraken": "HTTP 500"})
+    with patch("tickerflow.cli._registry_fetch", new_callable=AsyncMock, side_effect=error):
         result = runner.invoke(main, ["fetch", "BTCUSDT", "1d", "10"])
     assert result.exit_code != 0
-    assert "No data" in result.output
+    assert "no data for BTCUSDT 1d: binance: HTTP 451; kraken: HTTP 500" in result.output
+
+
+def test_fetch_rejects_an_unknown_interval(runner: CliRunner) -> None:
+    result = runner.invoke(main, ["fetch", "BTCUSDT", "1D", "10"])
+    assert result.exit_code != 0
+    assert "interval '1D' is not one of" in result.output
+

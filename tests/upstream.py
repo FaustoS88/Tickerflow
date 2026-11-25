@@ -39,7 +39,8 @@ class Upstream:
         drop: bool = False,
     ) -> None:
         """Answer requests under *prefix* with JSON *payload* (or raw *text*), after *delay*;
-        *drop* closes the connection instead, so the client raises."""
+        *drop* closes the connection instead, so the client raises. A callable *payload*
+        gets the query string as a dict and returns the JSON."""
         self._replies[prefix] = _Reply(payload, status, text, delay, drop)
 
     def reset(self) -> None:
@@ -61,7 +62,8 @@ class Upstream:
             return web.Response()
         if r.text is not None:
             return web.Response(text=r.text, status=r.status)
-        return web.json_response(r.payload, status=r.status)
+        payload = r.payload(dict(request.query)) if callable(r.payload) else r.payload
+        return web.json_response(payload, status=r.status)
 
     def start(self) -> None:
         app = web.Application()

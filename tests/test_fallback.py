@@ -10,7 +10,7 @@ import aiohttp
 import pytest
 
 from tests.upstream import Upstream
-from tickerflow import registry
+from tickerflow import NoDataError, registry
 from tickerflow.providers import binance
 from tickerflow.providers.yfinance import YFinanceProvider
 
@@ -94,10 +94,20 @@ async def test_coingecko_prices_the_pair_in_its_quote_currency(upstream: Upstrea
 async def test_daily_ethbtc_is_never_served_by_coingecko(upstream: Upstream) -> None:
     for exchange in ("/binance", "/kraken", "/kucoin"):
         upstream.reply(exchange, status=500)
-    assert await registry.fetch("ETHBTC", "1d", 5) is None
+    with pytest.raises(NoDataError):
+        await registry.fetch("ETHBTC", "1d", 5)
     assert "coingecko" not in _hits(upstream)
 
 
-async def test_all_providers_failing_returns_none(upstream: Upstream) -> None:
+async def test_all_providers_failing_raises_with_each_reason(upstream: Upstream) -> None:
     upstream.reset()  # every path answers 404
-    assert await registry.fetch("ETHBTC", "4h", 5) is None
+    with pytest.raises(NoDataError) as err:
+        await registry.fetch("ETHBTC", "4h", 5)
+    assert err.value.reasons == {
+        "binance": "HTTP 404",
+        "coingecko": "HTTP 404",
+        "kraken": "HTTP 404",
+        "kucoin": "HTTP 404",
+        "yfinance": "no data",
+    }
+    assert str(err.value).startswith("no data for ETHBTC 4h: binance: HTTP 404; coingecko:")
