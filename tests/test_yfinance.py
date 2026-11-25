@@ -9,7 +9,12 @@ import pandas as pd
 import pytest
 
 from tickerflow.models import Candle
-from tickerflow.providers.yfinance import YFinanceProvider, _to_yf_symbol
+from tickerflow.providers.base import market_window
+from tickerflow.providers.yfinance import (
+    _BAR_DURATION,
+    YFinanceProvider,
+    _to_yf_symbol,
+)
 
 
 def _make_df(n: int = 5) -> pd.DataFrame:
@@ -144,3 +149,54 @@ async def test_fetch_returns_none_on_empty_dataframe(provider: YFinanceProvider)
     with patch.object(YFinanceProvider, "_download", return_value=empty_df):
         result = await provider.fetch("AAPL", "1d", 10)
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Download window
+# ---------------------------------------------------------------------------
+
+def _closed(day: datetime.date) -> bool:
+    """Weekends, a holiday every 25 days and the 31 Dec to 3 Jan closure."""
+    year_end = (day.month, day.day) == (12, 31) or (day.month == 1 and day.day <= 3)
+    return day.weekday() >= 5 or day.toordinal() % 25 == 0 or year_end
+
+
+def _bars(start: datetime.datetime, now: datetime.datetime, per_day: int) -> int:
+    """Bars of the sessions opening (14:30 UTC) between *start* and *now*; a half day after
+    each holiday."""
+    total = 0
+    for d in range((now - start).days + 2):
+        opens = datetime.datetime.combine(start.date(), datetime.time(14, 30), datetime.UTC)
+        opens += datetime.timedelta(days=d)
+        day = opens.date()
+        if start <= opens < now and not _closed(day):
+            half = (day - datetime.timedelta(days=1)).toordinal() % 25 == 0
+            total += max(1, per_day // 2) if half else per_day
+    return total
+
+
+@pytest.mark.parametrize("interval", ["1m", "5m", "15m", "1h", "1d", "1w"])
+def test_window_holds_limit_bars_on_a_weekday_calendar(interval: str) -> None:
+    bar = _BAR_DURATION[interval]
+    per_day = max(1, datetime.timedelta(hours=6, minutes=30) // bar)
+    monday = datetime.datetime(2026, 11, 2, 13, tzinfo=datetime.UTC)  # before the US open
+    for limit in (1, per_day, 30, 100, 1000):
+        window = market_window(bar, limit)
+        if interval == "1w":
+            assert window // bar >= limit
+            continue
+        for offset in range(84):  # through the year-end closure
+            now = monday + datetime.timedelta(days=offset)
+            assert _bars(now - window, now, per_day) >= limit, (limit, now)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("interval", ["1m", "5m", "15m", "1h"])
+async def test_intraday_window_stays_inside_yahoo_history(
+    provider: YFinanceProvider, interval: str
+) -> None:
+    before = datetime.datetime.now(datetime.UTC)
+    with patch.object(YFinanceProvider, "_download", return_value=None) as download:
+        await provider.fetch("AAPL", interval, 5000)
+    yahoo_days = {"1m": 8, "5m": 60, "15m": 60, "1h": 730}[interval]
+    assert before - download.call_args.args[2] < datetime.timedelta(days=yahoo_days)

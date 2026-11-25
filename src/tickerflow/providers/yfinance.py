@@ -9,7 +9,7 @@ import re
 import yfinance as yf
 
 from tickerflow.models import Candle
-from tickerflow.providers.base import OHLCVProvider
+from tickerflow.providers.base import OHLCVProvider, market_window
 
 # tickerflow interval → yfinance interval
 _INTERVAL_MAP: dict[str, str] = {
@@ -29,6 +29,14 @@ _BAR_DURATION: dict[str, datetime.timedelta] = {
     "1h":  datetime.timedelta(hours=1),
     "1d":  datetime.timedelta(days=1),
     "1w":  datetime.timedelta(weeks=1),
+}
+
+# Furthest look-back per intraday request, a day inside Yahoo's limits (yfinance history.py)
+_MAX_LOOKBACK: dict[str, datetime.timedelta] = {
+    "1m":  datetime.timedelta(days=7),
+    "5m":  datetime.timedelta(days=59),
+    "15m": datetime.timedelta(days=59),
+    "1h":  datetime.timedelta(days=729),
 }
 
 _CRYPTO_RE    = re.compile(r"^[A-Z]{2,}(USDT|USDC|BTC|ETH|BNB|BUSD|FDUSD)$")
@@ -96,9 +104,9 @@ class YFinanceProvider(OHLCVProvider):
             return None  # unsupported interval (e.g. 4h)
 
         ticker = _to_yf_symbol(symbol)
-        bar_delta = _BAR_DURATION[interval]
-        # Add 20 % headroom for weekends / market holidays
-        start = datetime.datetime.now(datetime.UTC) - bar_delta * int(limit * 1.2 + 5)
+        window = market_window(_BAR_DURATION[interval], limit)
+        window = min(window, _MAX_LOOKBACK.get(interval, window))
+        start = datetime.datetime.now(datetime.UTC) - window
 
         df = await asyncio.to_thread(self._download, ticker, yf_interval, start)
         if df is None or df.empty:
@@ -127,7 +135,7 @@ class YFinanceProvider(OHLCVProvider):
         """Blocking yfinance fetch — called via asyncio.to_thread."""
         try:
             df = yf.Ticker(ticker).history(
-                start=start.strftime("%Y-%m-%d"),
+                start=start,
                 interval=interval,
                 auto_adjust=True,
             )
