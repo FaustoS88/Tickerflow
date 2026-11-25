@@ -23,7 +23,7 @@ pip install -e ".[dev]"
 pytest tests/ -v
 ```
 
-All tests use mocked HTTP responses — no API keys or network access needed.
+All tests use mocked HTTP responses — no API keys or network access needed. The exception is `tests/test_live.py`, which makes real requests to the providers that need no key and runs only with `TICKERFLOW_LIVE=1`; the Live workflow runs it every Monday and on pull requests that change it.
 
 ## Code Style
 
@@ -75,6 +75,8 @@ In `src/tickerflow/registry.py`:
 ### 3. Add tests
 
 Create `tests/test_your_provider.py`. For an aiohttp provider, add its URL constant to the `upstream` fixture in `tests/conftest.py`, then set replies in each test with `upstream.reply(prefix, payload, status=...)`: the provider talks to a local server, never the network.
+
+If the provider needs no API key, add one real request for it to `tests/test_live.py`.
 
 ### 4. Update docs
 

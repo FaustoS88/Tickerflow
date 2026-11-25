@@ -10,6 +10,10 @@ The project was called `ohlcv-hub` from 2026-02-22 (repository and import name),
 
 ## [Unreleased]
 
+### Added
+- Python 3.14: CI runs the tests on Python 3.11 to 3.14 and the classifiers list 3.14.
+- A weekly job makes a real request to each provider that needs no key and fails when ETHBTC is not priced in BTC.
+
 ### Fixed
 - Binance opens one HTTP session per request, so a second `asyncio.run` in the same process is served by Binance again instead of falling through to another provider.
 - CoinGecko prices each pair in its quote currency (stablecoins in USD), serves only `4h` (its free API has no daily bars) and stamps candles at their open time, like the exchanges.
@@ -18,6 +22,7 @@ The project was called `ohlcv-hub` from 2026-02-22 (repository and import name),
 
 ### Changed
 - `teardown()` has nothing left to close and is kept as a no-op for compatibility.
+- Releases are published from a version tag by GitHub Actions, only after the tests pass, through PyPI trusted publishing; the tag must match the package version.
 - aiohttp has no upper bound any more (was `<3.11.0`), so tickerflow installs next to ccxt 4.5.94 and litellm 1.111.0, which need aiohttp 3.14. The tests run against a local aiohttp server instead of aioresponses, which is gone from the `dev` extra.
 
 ## [0.2.5] — 2026-08-04
