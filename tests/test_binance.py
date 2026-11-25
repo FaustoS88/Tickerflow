@@ -1,16 +1,12 @@
-"""Tests for BinanceProvider — mocked HTTP via aioresponses."""
+"""Tests for BinanceProvider — HTTP answered by the local test server."""
 
 from __future__ import annotations
 
-import re
-
 import pytest
-from aioresponses import aioresponses
 
+from tests.upstream import Upstream
 from tickerflow.models import Candle
-from tickerflow.providers.binance import BinanceProvider
-
-_KLINES_RE = re.compile(r"https://api\.binance\.com/api/v3/klines.*")
+from tickerflow.providers.binance import _KLINES_URL, BinanceProvider
 
 # One kline row in Binance format: [open_time_ms, O, H, L, C, V, close_time_ms, ...]
 _KLINE_ROW = [
@@ -29,6 +25,10 @@ _KLINE_ROW = [
 @pytest.fixture()
 def provider() -> BinanceProvider:
     return BinanceProvider()
+
+
+def test_calls_the_real_endpoint_outside_tests() -> None:
+    assert _KLINES_URL == "https://api.binance.com/api/v3/klines"
 
 
 # ---------------------------------------------------------------------------
@@ -58,12 +58,11 @@ def test_supports(provider: BinanceProvider, symbol: str, expected: bool) -> Non
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_fetch_returns_candles(provider: BinanceProvider) -> None:
+async def test_fetch_returns_candles(provider: BinanceProvider, upstream: Upstream) -> None:
     payload = [_KLINE_ROW]
 
-    with aioresponses() as mock:
-        mock.get(_KLINES_RE, payload=payload, status=200)
-        result = await provider.fetch("BTCUSDT", "1d", 1)
+    upstream.reply("/binance", payload)
+    result = await provider.fetch("BTCUSDT", "1d", 1)
 
     assert result is not None
     assert len(result) == 1
@@ -78,16 +77,15 @@ async def test_fetch_returns_candles(provider: BinanceProvider) -> None:
 
 
 @pytest.mark.asyncio
-async def test_fetch_multiple_candles(provider: BinanceProvider) -> None:
+async def test_fetch_multiple_candles(provider: BinanceProvider, upstream: Upstream) -> None:
     second_row = [
         1_700_086_400_000, "30200.50", "30800.00", "30100.00", "30700.00",
         "200.00", 1_700_172_799_999, "6140000.00", 88,
     ]
     payload = [_KLINE_ROW, second_row]
 
-    with aioresponses() as mock:
-        mock.get(_KLINES_RE, payload=payload, status=200)
-        result = await provider.fetch("BTCUSDT", "1d", 2)
+    upstream.reply("/binance", payload)
+    result = await provider.fetch("BTCUSDT", "1d", 2)
 
     assert result is not None
     assert len(result) == 2
@@ -99,19 +97,21 @@ async def test_fetch_multiple_candles(provider: BinanceProvider) -> None:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_http_error(provider: BinanceProvider) -> None:
-    with aioresponses() as mock:
-        mock.get(_KLINES_RE, status=400, payload={"code": -1121, "msg": "Invalid symbol."})
-        result = await provider.fetch("BTCUSDT", "1d", 10)
+async def test_fetch_returns_none_on_http_error(
+    provider: BinanceProvider, upstream: Upstream
+) -> None:
+    upstream.reply("/binance", {"code": -1121, "msg": "Invalid symbol."}, status=400)
+    result = await provider.fetch("BTCUSDT", "1d", 10)
 
     assert result is None
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_empty_response(provider: BinanceProvider) -> None:
-    with aioresponses() as mock:
-        mock.get(_KLINES_RE, payload=[], status=200)
-        result = await provider.fetch("BTCUSDT", "1d", 10)
+async def test_fetch_returns_none_on_empty_response(
+    provider: BinanceProvider, upstream: Upstream
+) -> None:
+    upstream.reply("/binance", [])
+    result = await provider.fetch("BTCUSDT", "1d", 10)
 
     assert result is None
 
@@ -124,9 +124,10 @@ async def test_fetch_returns_none_for_unsupported_interval(provider: BinanceProv
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_server_error(provider: BinanceProvider) -> None:
-    with aioresponses() as mock:
-        mock.get(_KLINES_RE, status=500, payload={})
-        result = await provider.fetch("BTCUSDT", "1d", 10)
+async def test_fetch_returns_none_on_server_error(
+    provider: BinanceProvider, upstream: Upstream
+) -> None:
+    upstream.reply("/binance", {}, status=500)
+    result = await provider.fetch("BTCUSDT", "1d", 10)
 
     assert result is None
