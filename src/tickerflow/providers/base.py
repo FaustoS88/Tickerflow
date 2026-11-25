@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+import aiohttp
+
 from tickerflow.models import Candle
+
+#: One timeout for every aiohttp provider, so a silent upstream hands over to the next one fast.
+HTTP_TIMEOUT = aiohttp.ClientTimeout(total=10)
 
 
 class OHLCVProvider(ABC):

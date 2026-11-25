@@ -15,7 +15,7 @@ import re
 import aiohttp
 
 from tickerflow.models import Candle
-from tickerflow.providers.base import OHLCVProvider
+from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class KrakenProvider(OHLCVProvider):
 
         try:
             async with (
-                aiohttp.ClientSession() as session,
+                aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session,
                 session.get(_BASE_URL, params=params) as resp,
             ):
                 if resp.status != 200:
