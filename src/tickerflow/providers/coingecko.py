@@ -1,9 +1,11 @@
 """CoinGecko OHLCV provider — crypto candlestick data, no API key required.
 
-Uses the public ``/coins/{id}/ohlc`` endpoint. Granularity is determined
-automatically by CoinGecko based on the requested time window:
-  - 3-30 days  -> 4-hour bars
-  - > 30 days  -> daily bars
+Uses the public ``/coins/{id}/ohlc`` endpoint, where CoinGecko picks the bar
+size from the window: 1-2 days give 30-minute bars, 3-30 days 4-hour bars and
+longer windows 4-day bars (daily bars need a paid plan). So only ``4h`` is
+served, from a 30-day window. Prices are in the pair's quote currency, with
+stablecoins priced in USD. CoinGecko stamps each bar at its close; candles here
+carry the open time, like the exchanges.
 
 Note: the OHLC endpoint does not include volume. All candles have ``volume=0``.
 """
@@ -16,7 +18,7 @@ import re
 import aiohttp
 
 from tickerflow.models import Candle
-from tickerflow.providers.base import OHLCVProvider
+from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +51,20 @@ _COIN_IDS: dict[str, str] = {
     "ARB": "arbitrum",
 }
 
-# CoinGecko granularity is automatic based on `days`:
-#   3-30  days -> 4-hour bars
-#   > 30  days -> daily bars
-_INTERVAL_DAYS: dict[str, int] = {
-    "4h": 30,   # 30 days at 4h granularity → up to 180 bars
-    "1d": 90,   # 90 days at daily granularity → up to 90 bars
+# Quote currency → CoinGecko vs_currency
+_VS_CURRENCY: dict[str, str] = {
+    "USDT": "usd",
+    "USDC": "usd",
+    "BUSD": "usd",
+    "FDUSD": "usd",
+    "BTC": "btc",
+    "ETH": "eth",
+    "BNB": "bnb",
 }
+
+_DAYS = 30  # a 3-30 day window gives 4-hour bars
+_MAX_BARS = 180  # 30 days of 4h bars; longer requests go to the next provider
+_BAR_SECONDS = 14_400
 
 
 def _base_currency(symbol: str) -> str | None:
@@ -79,7 +88,7 @@ class CoinGeckoProvider(OHLCVProvider):
     BTC, ETH, BNB, BUSD, or FDUSD — provided the base currency is in the
     built-in coin ID map.
 
-    Supported intervals: ``4h``, ``1d``.
+    Supported interval: ``4h``.
 
     Volume is not available from the OHLC endpoint and is always ``0.0``.
     """
@@ -95,8 +104,7 @@ class CoinGeckoProvider(OHLCVProvider):
         interval: str,
         limit: int,
     ) -> list[Candle] | None:
-        days = _INTERVAL_DAYS.get(interval)
-        if days is None:
+        if interval != "4h" or limit > _MAX_BARS:
             return None
 
         coin = _coin_id(symbol)
@@ -105,11 +113,12 @@ class CoinGeckoProvider(OHLCVProvider):
             return None
 
         url = f"{_BASE_URL}/coins/{coin}/ohlc"
-        params = {"vs_currency": "usd", "days": str(days)}
+        quote = _QUOTE_RE.search(symbol.upper())
+        params = {"vs_currency": _VS_CURRENCY[quote.group()], "days": str(_DAYS)}
 
         try:
             async with (
-                aiohttp.ClientSession() as session,
+                aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session,
                 session.get(url, params=params) as resp,
             ):
                 if resp.status != 200:
@@ -134,7 +143,7 @@ class CoinGeckoProvider(OHLCVProvider):
             try:
                 candles.append(
                     Candle(
-                        time=int(row[0]) // 1000,
+                        time=int(row[0]) // 1000 - _BAR_SECONDS,  # close stamp → open time
                         open=float(row[1]),
                         high=float(row[2]),
                         low=float(row[3]),

@@ -85,13 +85,13 @@ async def test_fetch_returns_candles(provider: CoinGeckoProvider) -> None:
 
     with aioresponses() as mock:
         mock.get(_OHLC_RE, payload=payload, status=200)
-        result = await provider.fetch("BTCUSDT", "1d", 10)
+        result = await provider.fetch("BTCUSDT", "4h", 10)
 
     assert result is not None
     assert len(result) == 1
     candle = result[0]
     assert isinstance(candle, Candle)
-    assert candle.time == 1_700_000_000_000 // 1000
+    assert candle.time == 1_700_000_000_000 // 1000 - 14_400  # close stamp → open time
     assert candle.open == 30000.0
     assert candle.high == 30500.0
     assert candle.low == 29800.0
@@ -106,7 +106,7 @@ async def test_fetch_respects_limit(provider: CoinGeckoProvider) -> None:
 
     with aioresponses() as mock:
         mock.get(_OHLC_RE, payload=rows, status=200)
-        result = await provider.fetch("BTCUSDT", "1d", 3)
+        result = await provider.fetch("BTCUSDT", "4h", 3)
 
     assert result is not None
     assert len(result) == 3
@@ -119,7 +119,7 @@ async def test_fetch_oldest_first(provider: CoinGeckoProvider) -> None:
 
     with aioresponses() as mock:
         mock.get(_OHLC_RE, payload=rows, status=200)
-        result = await provider.fetch("BTCUSDT", "1d", 5)
+        result = await provider.fetch("BTCUSDT", "4h", 5)
 
     assert result is not None
     assert result[0].time < result[-1].time
@@ -130,18 +130,26 @@ async def test_fetch_oldest_first(provider: CoinGeckoProvider) -> None:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("interval", ["1m", "1d"])  # daily bars need a paid CoinGecko plan
 async def test_fetch_returns_none_for_unsupported_interval(
+    provider: CoinGeckoProvider, interval: str
+) -> None:
+    result = await provider.fetch("BTCUSDT", interval, 10)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_leaves_more_than_180_bars_to_the_next_provider(
     provider: CoinGeckoProvider,
 ) -> None:
-    result = await provider.fetch("BTCUSDT", "1m", 10)
-    assert result is None
+    assert await provider.fetch("BTCUSDT", "4h", 181) is None
 
 
 @pytest.mark.asyncio
 async def test_fetch_returns_none_for_unknown_symbol(
     provider: CoinGeckoProvider,
 ) -> None:
-    result = await provider.fetch("XYZUSDT", "1d", 10)
+    result = await provider.fetch("XYZUSDT", "4h", 10)
     assert result is None
 
 
@@ -149,7 +157,7 @@ async def test_fetch_returns_none_for_unknown_symbol(
 async def test_fetch_returns_none_on_http_error(provider: CoinGeckoProvider) -> None:
     with aioresponses() as mock:
         mock.get(_OHLC_RE, status=429, payload={"error": "rate limit"})
-        result = await provider.fetch("BTCUSDT", "1d", 10)
+        result = await provider.fetch("BTCUSDT", "4h", 10)
 
     assert result is None
 
@@ -160,7 +168,7 @@ async def test_fetch_returns_none_on_empty_response(
 ) -> None:
     with aioresponses() as mock:
         mock.get(_OHLC_RE, payload=[], status=200)
-        result = await provider.fetch("BTCUSDT", "1d", 10)
+        result = await provider.fetch("BTCUSDT", "4h", 10)
 
     assert result is None
 
