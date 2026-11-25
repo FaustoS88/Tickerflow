@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - `teardown()` has nothing left to close and is kept as a no-op for compatibility.
+- aiohttp has no upper bound any more (was `<3.11.0`), so tickerflow installs next to ccxt 4.5.94 and litellm 1.111.0, which need aiohttp 3.14. The tests run against a local aiohttp server instead of aioresponses, which is gone from the `dev` extra.
 
 ## [0.2.0] — 2026-08-03
 
