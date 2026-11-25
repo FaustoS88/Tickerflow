@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tickerflow"
-version = "0.2.5"
+version = "0.2.6"
 description = "Async OHLCV for crypto, stocks and forex with automatic provider fallback; crypto needs no API keys"
 readme = "README.md"
 license = { text = "MIT" }

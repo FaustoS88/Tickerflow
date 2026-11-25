@@ -10,6 +10,8 @@ The project was called `ohlcv-hub` from 2026-02-22 (repository and import name),
 
 ## [Unreleased]
 
+## [0.2.6] — 2026-11-25
+
 ### Added
 - Python 3.14: CI runs the tests on Python 3.11 to 3.14 and the classifiers list 3.14.
 - A weekly job makes a real request to each provider that needs no key and fails when ETHBTC is not priced in BTC.
