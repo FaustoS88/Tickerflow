@@ -5,7 +5,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-README = Path(__file__).resolve().parent.parent / "README.md"
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+README = ROOT / "README.md"
 
 
 def test_readme_scripts_compile() -> None:
@@ -19,3 +22,15 @@ def test_readme_scripts_compile() -> None:
 def test_readme_links_are_absolute() -> None:
     # The README is also the PyPI description, where relative links break.
     assert re.findall(r"\]\((?!https?://)[^)]*\)", README.read_text(encoding="utf-8")) == []
+
+
+def test_readme_first_script_type_checks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A typed codebase indexes the result without a None check or a cast
+    api = pytest.importorskip("mypy.api")
+    script = re.search(r"```python\n(.*?)```", README.read_text(encoding="utf-8"), re.DOTALL)[1]
+    assert "btc[-1].close" in script
+    monkeypatch.setenv("MYPYPATH", str(ROOT / "src"))
+    out, err, status = api.run(
+        ["--check-untyped-defs", "--follow-imports=silent", "--cache-dir", str(tmp_path), "-c", script]
+    )
+    assert status == 0, out + err
