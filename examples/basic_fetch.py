@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 
-from tickerflow import fetch
+from tickerflow import NoDataError, fetch
 
 
 async def main() -> None:
@@ -20,12 +20,13 @@ async def main() -> None:
 
     for symbol, interval, limit in symbols:
         print(f"\n{symbol} ({interval}, last {limit} bars)")
-        candles = await fetch(symbol, interval=interval, limit=limit)
-
-        if not candles:
-            print("  no data returned")
+        try:
+            candles = await fetch(symbol, interval=interval, limit=limit)
+        except NoDataError as e:
+            print(f"  {e}")
             continue
 
+        print(f"  from {candles.provider}")
         print(f"  {'time':>10}  {'open':>10}  {'high':>10}  {'low':>10}  {'close':>10}")
         for c in candles[-5:]:
             print(f"  {c.time:>10}  {c.open:>10.4f}  {c.high:>10.4f}  {c.low:>10.4f}  {c.close:>10.4f}")

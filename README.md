@@ -73,7 +73,7 @@ BTCUSDT · 1d · 30 candles
 - `4h` bars are available for crypto only.
 - Crypto pairs quoted in fiat, such as `BTCEUR`, are read as forex and return no data.
 - Binance turns some regions away with HTTP 451, GitHub's hosted runners among them; there the next provider in the chain serves the bars.
-- `fetch()` returns the most recent bars only (up to 1,000 on Binance, 1,500 on KuCoin, 720 on Kraken; on Yahoo, `1m` reaches 7 days back, `5m` and `15m` 59 days, `1h` 729 days); there is no date-range query yet.
+- Date ranges come from Binance, KuCoin and yfinance; Kraken keeps only its last 720 bars, and CoinGecko, Tiingo and Finnhub serve no ranges. On Yahoo, `1m` reaches 7 days back, `5m` and `15m` 59 days, `1h` 729 days.
 - On exchanges the last bar is the current, unfinished one, and cached results are reused for the interval's TTL (4 hours for `1d`).
 - CoinGecko serves `4h` bars only (up to 180), without volume, and prices stablecoin pairs in USD.
 
@@ -96,7 +96,7 @@ pip install "tickerflow[all]"      # everything
 
 ```python
 import asyncio
-from tickerflow import fetch
+from tickerflow import fetch, fetch_df
 
 async def main():
     # Fetch 10 daily candles — provider is auto-selected
@@ -104,12 +104,52 @@ async def main():
     for c in candles[-3:]:
         print(f"{c.time}  O:{c.open:.2f}  H:{c.high:.2f}  L:{c.low:.2f}  C:{c.close:.2f}")
 
-    # Want a DataFrame instead? One flag.
-    df = await fetch("AAPL", interval="1d", limit=30, as_dataframe=True)
+    # Want a DataFrame instead?
+    df = await fetch_df("AAPL", interval="1d", limit=30)
     print(df.describe())
 
 asyncio.run(main())
 ```
+
+The result is a list of candles, oldest first, and `candles.provider` names the provider that served it.
+
+## Date Ranges
+
+```python
+import asyncio
+from datetime import UTC, datetime
+from tickerflow import fetch
+
+async def main():
+    candles = await fetch(
+        "ETHBTC", "1d", start=datetime(2020, 1, 1, tzinfo=UTC), end=datetime(2026, 1, 1, tzinfo=UTC)
+    )
+    print(len(candles), candles.provider)  # 2192 binance
+
+asyncio.run(main())
+```
+
+With `start`, `fetch` returns every bar that opens from `start` up to `end` (default: now), so leave `limit` out. Binance and KuCoin page back from the newest bar, also when `limit` asks for more bars than one request holds. `start` and `end` are timezone-aware datetimes or Unix seconds.
+
+## Errors
+
+`fetch` returns bars or raises. When no provider serves them, `NoDataError` says why for each one, in its message and in `.reasons`:
+
+```python
+import asyncio
+from datetime import UTC, datetime
+from tickerflow import NoDataError, fetch
+
+async def main():
+    try:
+        await fetch("ETHBTC", "1d", start=datetime(2020, 1, 1, tzinfo=UTC), providers=["kraken"])
+    except NoDataError as e:
+        print(e)  # no data for ETHBTC 1d: kraken: serves only its last 720 1d bars, from 2024-12-06 00:00 UTC
+
+asyncio.run(main())
+```
+
+An unknown interval or provider, a `limit` below 1 or an empty range raise `ValueError` before any request. `providers=` tries the named providers in that order instead of the chain for the symbol, and `timeout=` (30 seconds by default) bounds the whole chain, yfinance included.
 
 ## CLI
 
@@ -159,22 +199,22 @@ curl localhost:8000/providers/BTCUSDT
 curl localhost:8000/health
 ```
 
-Returns structured JSON — plug it into any frontend, dashboard, or automation. No vendor lock-in, runs on your machine; the upstream providers keep their own rate limits.
+Returns structured JSON, with the provider that served the candles — plug it into any frontend, dashboard, or automation. No vendor lock-in, runs on your machine; the upstream providers keep their own rate limits.
 
-By default the server binds to `0.0.0.0` and allows any CORS origin; pass `--host 127.0.0.1` to keep it local.
+By default the server listens on `127.0.0.1` only and allows any CORS origin; pass `--host 0.0.0.0` to open it to your network.
 
 Requires: `pip install "tickerflow[serve]"`
 
 ## DataFrame Output
 
-Prefer a DataFrame? One flag:
+Prefer a DataFrame? `fetch_df` takes the same arguments as `fetch`:
 
 ```python
-df = await fetch("BTCUSDT", interval="1d", limit=30, as_dataframe=True)
+df = await fetch_df("BTCUSDT", interval="1d", limit=30)
 print(df.describe())
 ```
 
-Returns a `pandas.DataFrame` with columns `time` (UTC datetime), `open`, `high`, `low`, `close`, `volume`.
+Returns a `pandas.DataFrame` with columns `time` (UTC datetime), `open`, `high`, `low`, `close`, `volume`; `df.attrs["provider"]` names the provider that served it.
 
 Requires: `pip install "tickerflow[pandas]"`
 
@@ -189,19 +229,19 @@ RY.TO    →  yfinance  →  Finnhub
 EURUSD   →  yfinance  →  Finnhub
 ```
 
-| Provider  | Key required | Asset classes         |
-|-----------|--------------|-----------------------|
-| Binance   | No           | Crypto                |
-| KuCoin    | No           | Crypto                |
-| Kraken    | No           | Crypto                |
-| CoinGecko | No           | Crypto (`4h` only)    |
-| yfinance  | No           | Stocks, Forex, Crypto |
-| Tiingo    | Yes (free)   | Stocks, ETFs          |
-| Finnhub   | Yes (paid)   | Stocks, Forex         |
+| Provider  | Key required | Asset classes         | Date ranges         |
+|-----------|--------------|-----------------------|---------------------|
+| Binance   | No           | Crypto                | Yes                 |
+| KuCoin    | No           | Crypto                | Yes                 |
+| Kraken    | No           | Crypto                | Last 720 bars       |
+| CoinGecko | No           | Crypto (`4h` only)    | No                  |
+| yfinance  | No           | Stocks, Forex, Crypto | Yes                 |
+| Tiingo    | Yes (free)   | Stocks, ETFs          | No                  |
+| Finnhub   | Yes (paid)   | Stocks, Forex         | No                  |
 
 ## Supported Intervals
 
-`1m` · `5m` · `15m` · `1h` · `4h` · `1d` · `1w`
+`1m` · `5m` · `15m` · `1h` · `4h` · `1d` · `1w`. Binance, KuCoin, Kraken and Finnhub also serve `30m`, and Binance `3m`, `2h`, `6h`, `8h`, `12h`, `3d` and `1M`; `tickerflow.INTERVALS` lists every interval `fetch` accepts.
 
 ## Caching
 
@@ -225,15 +265,16 @@ Use tickerflow as a tool in your [Pydantic AI](https://github.com/pydantic/pydan
 
 ```python
 from pydantic_ai import Agent
-from tickerflow import fetch
+from tickerflow import NoDataError, fetch
 
 agent = Agent("openai:gpt-4o", instructions="You are a market analyst.")
 
 @agent.tool
 async def fetch_market_data(ctx, symbol: str, interval: str = "1d", limit: int = 30) -> str:
-    candles = await fetch(symbol, interval=interval, limit=limit)
-    if not candles:
-        return f"No data for {symbol}"
+    try:
+        candles = await fetch(symbol, interval=interval, limit=limit)
+    except (NoDataError, ValueError) as e:
+        return f"No data for {symbol}: {e}"
     last = candles[-1]
     return f"{symbol}: O={last.open:.2f} H={last.high:.2f} L={last.low:.2f} C={last.close:.2f}"
 ```
@@ -265,10 +306,13 @@ See [examples/](https://github.com/FaustoS88/Tickerflow/tree/main/examples) for 
 - `tickerflow chart` — terminal candlestick charts
 - Pydantic AI integration example
 
+**In the next release**
+- Date ranges with pagination where the exchange allows it
+- Errors that give each provider's reason, and results that name the provider
+
 **Planned**
 - OKX and Bybit providers
 - WebSocket streaming
-- Date-range queries with pagination where the exchange allows it
 - Async context manager support
 
 ## Contributing

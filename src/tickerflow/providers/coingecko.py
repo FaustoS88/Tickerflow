@@ -12,15 +12,13 @@ Note: the OHLC endpoint does not include volume. All candles have ``volume=0``.
 
 from __future__ import annotations
 
-import logging
 import re
 
 import aiohttp
 
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
 from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider
-
-logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://api.coingecko.com/api/v3"
 
@@ -104,35 +102,26 @@ class CoinGeckoProvider(OHLCVProvider):
         interval: str,
         limit: int,
     ) -> list[Candle] | None:
-        if interval != "4h" or limit > _MAX_BARS:
-            return None
+        if interval != "4h":
+            raise ProviderError("serves 4h bars only")
+        if limit > _MAX_BARS:
+            raise ProviderError(f"serves at most {_MAX_BARS} bars")
 
         coin = _coin_id(symbol)
         if not coin:
-            logger.debug("coingecko: no coin ID mapping for %s", symbol)
-            return None
+            raise ProviderError(f"no coin id for {symbol}")
 
         url = f"{_BASE_URL}/coins/{coin}/ohlc"
         quote = _QUOTE_RE.search(symbol.upper())
         params = {"vs_currency": _VS_CURRENCY[quote.group()], "days": str(_DAYS)}
 
-        try:
-            async with (
-                aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session,
-                session.get(url, params=params) as resp,
-            ):
-                if resp.status != 200:
-                    logger.warning(
-                        "coingecko HTTP %d for %s (interval=%s)",
-                        resp.status,
-                        symbol,
-                        interval,
-                    )
-                    return None
-                data = await resp.json(content_type=None)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("coingecko request failed for %s: %s", symbol, exc)
-            return None
+        async with (
+            aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session,
+            session.get(url, params=params) as resp,
+        ):
+            if resp.status != 200:
+                raise ProviderError(f"HTTP {resp.status}")
+            data = await resp.json(content_type=None)
 
         if not data:
             return None

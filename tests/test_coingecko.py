@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from tests.upstream import Upstream
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
 from tickerflow.providers.coingecko import _BASE_URL, CoinGeckoProvider, _base_currency, _coin_id
 
@@ -128,36 +129,36 @@ async def test_fetch_oldest_first(provider: CoinGeckoProvider, upstream: Upstrea
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("interval", ["1m", "1d"])  # daily bars need a paid CoinGecko plan
-async def test_fetch_returns_none_for_unsupported_interval(
+async def test_fetch_raises_for_unsupported_interval(
     provider: CoinGeckoProvider, interval: str
 ) -> None:
-    result = await provider.fetch("BTCUSDT", interval, 10)
-    assert result is None
+    with pytest.raises(ProviderError, match="serves 4h bars only"):
+        await provider.fetch("BTCUSDT", interval, 10)
 
 
 @pytest.mark.asyncio
 async def test_fetch_leaves_more_than_180_bars_to_the_next_provider(
     provider: CoinGeckoProvider,
 ) -> None:
-    assert await provider.fetch("BTCUSDT", "4h", 181) is None
+    with pytest.raises(ProviderError, match="at most 180 bars"):
+        await provider.fetch("BTCUSDT", "4h", 181)
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_for_unknown_symbol(
+async def test_fetch_raises_for_unknown_symbol(
     provider: CoinGeckoProvider,
 ) -> None:
-    result = await provider.fetch("XYZUSDT", "4h", 10)
-    assert result is None
+    with pytest.raises(ProviderError, match="no coin id for XYZUSDT"):
+        await provider.fetch("XYZUSDT", "4h", 10)
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_http_error(
+async def test_fetch_raises_on_http_error(
     provider: CoinGeckoProvider, upstream: Upstream
 ) -> None:
     upstream.reply("/coingecko/coins/bitcoin/ohlc", {"error": "rate limit"}, status=429)
-    result = await provider.fetch("BTCUSDT", "4h", 10)
-
-    assert result is None
+    with pytest.raises(ProviderError, match="HTTP 429"):
+        await provider.fetch("BTCUSDT", "4h", 10)
 
 
 @pytest.mark.asyncio

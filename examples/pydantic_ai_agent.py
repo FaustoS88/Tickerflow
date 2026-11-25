@@ -24,8 +24,7 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from tickerflow import fetch
-from tickerflow.registry import teardown
+from tickerflow import NoDataError, fetch
 
 load_dotenv()
 
@@ -84,9 +83,10 @@ def create_agent(model_or_name: str | OpenAIChatModel | None = None, api_key: st
             interval: Bar size — 1m, 5m, 15m, 1h, 4h, 1d, 1w
             limit:    Number of bars to retrieve (default 30)
         """
-        candles = await fetch(symbol.upper(), interval=interval, limit=limit)
-        if not candles:
-            return f"No data available for {symbol}"
+        try:
+            candles = await fetch(symbol.upper(), interval=interval, limit=limit)
+        except (NoDataError, ValueError) as e:
+            return f"No data available for {symbol}: {e}"
 
         lines = [f"{'time':>12}  {'open':>10}  {'high':>10}  {'low':>10}  {'close':>10}  {'volume':>14}"]
         for c in candles[-10:]:  # return last 10 to keep context short
@@ -116,25 +116,22 @@ async def main() -> None:
         "Compare AAPL and MSFT — which stock performed better over the last 10 days?",
     ]
 
-    try:
-        for question in questions:
-            print(f"\n{'=' * 60}")
-            print(f"Q: {question}")
-            print("=" * 60)
+    for question in questions:
+        print(f"\n{'=' * 60}")
+        print(f"Q: {question}")
+        print("=" * 60)
 
-            result = await agent.run(question)
-            analysis = result.output
-            print(f"\nSymbol:   {analysis.symbol}")
-            print(f"Interval: {analysis.interval}")
-            print(f"Summary:  {analysis.summary}")
-            if analysis.current_price:
-                print(f"Price:    ${analysis.current_price:,.2f}")
-            if analysis.price_change_pct is not None:
-                print(f"Change:   {analysis.price_change_pct:+.2f}%")
-            if analysis.recommendation:
-                print(f"Take:     {analysis.recommendation}")
-    finally:
-        await teardown()
+        result = await agent.run(question)
+        analysis = result.output
+        print(f"\nSymbol:   {analysis.symbol}")
+        print(f"Interval: {analysis.interval}")
+        print(f"Summary:  {analysis.summary}")
+        if analysis.current_price:
+            print(f"Price:    ${analysis.current_price:,.2f}")
+        if analysis.price_change_pct is not None:
+            print(f"Change:   {analysis.price_change_pct:+.2f}%")
+        if analysis.recommendation:
+            print(f"Take:     {analysis.recommendation}")
 
 
 if __name__ == "__main__":

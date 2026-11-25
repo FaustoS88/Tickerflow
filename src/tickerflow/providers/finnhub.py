@@ -10,15 +10,13 @@ Install the optional dep before use:
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 import re
 import time
 
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
 from tickerflow.providers.base import OHLCVProvider
-
-logger = logging.getLogger(__name__)
 
 # Finnhub resolution strings
 _RESOLUTION_MAP: dict[str, str] = {
@@ -57,6 +55,22 @@ def _to_forex_symbol(symbol: str) -> str:
     return f"OANDA:{symbol[:3]}_{symbol[3:]}"
 
 
+def _call(api_key: str, method: str, *args: object) -> dict | None:
+    """Call a finnhub-python method; an ``ok`` answer passes, ``no_data`` means no bars."""
+    import finnhub
+
+    try:
+        data = getattr(finnhub.Client(api_key=api_key), method)(*args)
+    except Exception as exc:  # noqa: BLE001
+        # finnhub-python sends the key in the query string, and requests errors quote the URL
+        raise ProviderError(str(exc).replace(api_key, "***")) from None
+    if not data or data.get("s") == "no_data":
+        return None
+    if data.get("s") != "ok":
+        raise ProviderError(f"status {data.get('s')}")
+    return data
+
+
 class FinnhubProvider(OHLCVProvider):
     """Fetches OHLCV candles from Finnhub for US stocks and forex pairs.
 
@@ -90,8 +104,7 @@ class FinnhubProvider(OHLCVProvider):
     ) -> list[Candle] | None:
         resolution = _RESOLUTION_MAP.get(interval)
         if resolution is None:
-            # 4h and other unmapped intervals are not supported
-            return None
+            raise ProviderError(f"no {interval} bars")
 
         api_key = os.getenv("FINNHUB_API_KEY")
         if not api_key:
@@ -128,22 +141,7 @@ class FinnhubProvider(OHLCVProvider):
         to_ts: int,
         api_key: str,
     ) -> dict | None:
-        try:
-            import finnhub
-
-            data = finnhub.Client(api_key=api_key).stock_candles(
-                symbol, resolution, from_ts, to_ts
-            )
-            if data and data.get("s") != "ok":
-                logger.warning(
-                    "finnhub stock_candles status=%s for %s", data.get("s"), symbol
-                )
-            return data if data and data.get("s") == "ok" else None
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "finnhub stock_candles raised %s: %s", type(exc).__name__, exc
-            )
-            return None
+        return _call(api_key, "stock_candles", symbol, resolution, from_ts, to_ts)
 
     @staticmethod
     def _fetch_forex(
@@ -153,21 +151,7 @@ class FinnhubProvider(OHLCVProvider):
         to_ts: int,
         api_key: str,
     ) -> dict | None:
-        try:
-            import finnhub
-
-            fx_sym = _to_forex_symbol(symbol)
-            data = finnhub.Client(api_key=api_key).forex_candles(
-                fx_sym, resolution, from_ts, to_ts
-            )
-            if data and data.get("s") != "ok":
-                logger.warning(
-                    "finnhub forex_candles status=%s for %s", data.get("s"), fx_sym
-                )
-            return data if data and data.get("s") == "ok" else None
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("finnhub forex_candles raised %s: %s", type(exc).__name__, exc)
-            return None
+        return _call(api_key, "forex_candles", _to_forex_symbol(symbol), resolution, from_ts, to_ts)
 
     @staticmethod
     def _parse(raw: dict | None, limit: int) -> list[Candle] | None:

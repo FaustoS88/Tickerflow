@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import aiohttp
 import pytest
 
 from tests.upstream import Upstream
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
 from tickerflow.providers.kucoin import _BASE_URL, KuCoinProvider, _normalise
 
@@ -149,30 +151,29 @@ async def test_fetch_sends_kucoin_symbol_format(
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_for_unsupported_interval(provider: KuCoinProvider) -> None:
-    result = await provider.fetch("BTCUSDT", "3d", 10)
-    assert result is None
+async def test_fetch_raises_for_unsupported_interval(provider: KuCoinProvider) -> None:
+    with pytest.raises(ProviderError, match="no 3d bars"):
+        await provider.fetch("BTCUSDT", "3d", 10)
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_http_error(
+async def test_fetch_raises_on_http_error(
     provider: KuCoinProvider, upstream: Upstream
 ) -> None:
     upstream.reply("/kucoin", status=429)
-    result = await provider.fetch("BTCUSDT", "1d", 10)
-    assert result is None
+    with pytest.raises(ProviderError, match="HTTP 429"):
+        await provider.fetch("BTCUSDT", "1d", 10)
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_api_error_code(
+async def test_fetch_raises_with_the_api_error_code(
     provider: KuCoinProvider, upstream: Upstream
 ) -> None:
     payload = {"code": "400100", "msg": "Invalid symbol"}
 
     upstream.reply("/kucoin", payload)
-    result = await provider.fetch("BTCUSDT", "1d", 10)
-
-    assert result is None
+    with pytest.raises(ProviderError, match="API error 400100: Invalid symbol"):
+        await provider.fetch("BTCUSDT", "1d", 10)
 
 
 @pytest.mark.asyncio
@@ -188,13 +189,12 @@ async def test_fetch_returns_none_on_empty_data(
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_network_error(
+async def test_fetch_raises_on_network_error(
     provider: KuCoinProvider, upstream: Upstream
 ) -> None:
     upstream.reply("/kucoin", drop=True)
-    result = await provider.fetch("BTCUSDT", "1d", 10)
-
-    assert result is None
+    with pytest.raises(aiohttp.ClientError):
+        await provider.fetch("BTCUSDT", "1d", 10)
 
 
 @pytest.mark.asyncio

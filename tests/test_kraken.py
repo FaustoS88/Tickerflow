@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import aiohttp
 import pytest
 
 from tests.upstream import Upstream
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
 from tickerflow.providers.kraken import _BASE_URL, KrakenProvider, _normalise
 
@@ -130,33 +132,31 @@ async def test_fetch_multiple_intervals(provider: KrakenProvider, upstream: Upst
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_for_unsupported_interval(
+async def test_fetch_raises_for_unsupported_interval(
     provider: KrakenProvider,
 ) -> None:
-    result = await provider.fetch("BTCUSDT", "3d", 10)
-    assert result is None
+    with pytest.raises(ProviderError, match="no 3d bars"):
+        await provider.fetch("BTCUSDT", "3d", 10)
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_http_error(
+async def test_fetch_raises_on_http_error(
     provider: KrakenProvider, upstream: Upstream
 ) -> None:
     upstream.reply("/kraken", status=500)
-    result = await provider.fetch("BTCUSDT", "1d", 10)
-
-    assert result is None
+    with pytest.raises(ProviderError, match="HTTP 500"):
+        await provider.fetch("BTCUSDT", "1d", 10)
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_api_error(
+async def test_fetch_raises_with_the_api_error(
     provider: KrakenProvider, upstream: Upstream
 ) -> None:
     payload = {"error": ["EQuery:Unknown asset pair"], "result": {}}
 
     upstream.reply("/kraken", payload)
-    result = await provider.fetch("BTCUSDT", "1d", 10)
-
-    assert result is None
+    with pytest.raises(ProviderError, match="EQuery:Unknown asset pair"):
+        await provider.fetch("BTCUSDT", "1d", 10)
 
 
 @pytest.mark.asyncio
@@ -172,13 +172,12 @@ async def test_fetch_returns_none_on_empty_result(
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_network_error(
+async def test_fetch_raises_on_network_error(
     provider: KrakenProvider, upstream: Upstream
 ) -> None:
     upstream.reply("/kraken", drop=True)
-    result = await provider.fetch("BTCUSDT", "1d", 10)
-
-    assert result is None
+    with pytest.raises(aiohttp.ClientError):
+        await provider.fetch("BTCUSDT", "1d", 10)
 
 
 @pytest.mark.asyncio

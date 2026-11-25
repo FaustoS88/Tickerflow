@@ -10,6 +10,23 @@ The project was called `ohlcv-hub` from 2026-02-22 (repository and import name),
 
 ## [Unreleased]
 
+### Added
+- `fetch` takes `start` and `end` for a date range. Binance and KuCoin page back from the newest bar, yfinance asks Yahoo for the range, and Kraken serves ranges inside its last 720 bars. On Binance and KuCoin a `limit` above one request's cap is paged too.
+- `fetch_df` returns a pandas DataFrame, with the provider that served it in `df.attrs["provider"]`.
+- `fetch` returns `Candles`, a list whose `provider` attribute names the provider that served it; the server's `/ohlcv` answer has a `provider` field.
+- `providers=` tries the named providers in that order; `timeout=` (30 seconds) bounds the whole chain, yfinance included.
+- `tickerflow.INTERVALS` lists the intervals `fetch` accepts.
+
+### Changed
+- When no provider serves the bars, `fetch` raises `NoDataError` with each provider's reason in its message and in `.reasons`, instead of returning `None`. The CLI and the server show that message.
+- Providers raise `ProviderError` with the reason (HTTP status, API error, unsupported interval or range) instead of returning `None`, which now means no bars. Finnhub errors show `***` in place of the API key.
+- An unknown interval or provider, a `limit` below 1 or an empty range raise `ValueError` before any request.
+- `tickerflow serve` listens on 127.0.0.1 by default; `--host 0.0.0.0` opens it to the network.
+- The `dev` extra installs mypy, and a test type-checks the first README example.
+
+### Removed
+- `fetch(..., as_dataframe=True)`: use `fetch_df`.
+
 ## [0.2.6] — 2026-11-25
 
 ### Added

@@ -195,11 +195,14 @@ async def test_registry_fetch_populates_cache(monkeypatch: pytest.MonkeyPatch) -
     mock_provider.supports.return_value = True
     mock_provider.fetch = AsyncMock(return_value=candles)
 
-    with patch.object(registry, "pick", return_value=[mock_provider]):
+    with patch.object(registry, "pick", return_value=["mock"]), patch.dict(
+        registry._FACTORIES, {"mock": lambda: mock_provider}
+    ):
         result = await registry.fetch("BTCUSDT", "1d", 5)
-
-    assert result is candles
-    assert cache.get("BTCUSDT", "1d", 5) is candles
+        assert result == candles and result.provider == "mock"
+        assert cache.get("BTCUSDT", "1d", 5) == result
+        result.clear()  # the caller's copy, not the cached one
+        assert await registry.fetch("BTCUSDT", "1d", 5) == candles
 
 
 @pytest.mark.asyncio
@@ -213,7 +216,9 @@ async def test_registry_fetch_uses_cache_on_second_call(monkeypatch: pytest.Monk
     mock_provider.supports.return_value = True
     mock_provider.fetch = AsyncMock(return_value=candles)
 
-    with patch.object(registry, "pick", return_value=[mock_provider]):
+    with patch.object(registry, "pick", return_value=["mock"]), patch.dict(
+        registry._FACTORIES, {"mock": lambda: mock_provider}
+    ):
         await registry.fetch("BTCUSDT", "1d", 5)
         await registry.fetch("BTCUSDT", "1d", 5)
 
@@ -232,7 +237,9 @@ async def test_registry_fetch_skips_cache_when_disabled(monkeypatch: pytest.Monk
     mock_provider.supports.return_value = True
     mock_provider.fetch = AsyncMock(return_value=candles)
 
-    with patch.object(registry, "pick", return_value=[mock_provider]):
+    with patch.object(registry, "pick", return_value=["mock"]), patch.dict(
+        registry._FACTORIES, {"mock": lambda: mock_provider}
+    ):
         await registry.fetch("BTCUSDT", "1d", 5)
         await registry.fetch("BTCUSDT", "1d", 5)
 

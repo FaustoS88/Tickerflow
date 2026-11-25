@@ -11,18 +11,14 @@ from __future__ import annotations
 
 import asyncio
 
-from tickerflow import fetch
+from tickerflow import fetch_df
 
 
 async def main() -> None:
     # Fetch 30 daily candles for BTC as a DataFrame
-    df = await fetch("BTCUSDT", interval="1d", limit=30, as_dataframe=True)
+    df = await fetch_df("BTCUSDT", interval="1d", limit=30)
 
-    if df is None or df.empty:
-        print("No data returned")
-        return
-
-    print("=== BTCUSDT — Last 30 Daily Candles ===\n")
+    print(f"=== BTCUSDT — Last 30 Daily Candles, from {df.attrs['provider']} ===\n")
     print(df.to_string(index=False))
 
     print("\n=== Summary Statistics ===\n")

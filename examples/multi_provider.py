@@ -12,7 +12,8 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from tickerflow.registry import fetch, pick
+from tickerflow import NoDataError, fetch
+from tickerflow.registry import pick
 
 logging.basicConfig(level=logging.WARNING)  # suppress provider debug noise
 
@@ -31,13 +32,15 @@ async def main() -> None:
         print(f"\n{symbol}  [{interval}]")
         print(f"  chain : {chain_str}")
 
-        candles = await fetch(symbol, interval=interval, limit=limit)
-        if candles:
-            last = candles[-1]
-            print(f"  bars  : {len(candles)}")
-            print(f"  last  : O={last.open:.4f}  H={last.high:.4f}  L={last.low:.4f}  C={last.close:.4f}")
-        else:
-            print("  result: no data returned — all providers failed")
+        try:
+            candles = await fetch(symbol, interval=interval, limit=limit)
+        except NoDataError as e:
+            print(f"  result: {e}")
+            continue
+        last = candles[-1]
+        print(f"  served: {candles.provider}")
+        print(f"  bars  : {len(candles)}")
+        print(f"  last  : O={last.open:.4f}  H={last.high:.4f}  L={last.low:.4f}  C={last.close:.4f}")
 
 
 asyncio.run(main())

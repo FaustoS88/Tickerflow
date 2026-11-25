@@ -15,7 +15,7 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tickerflow.models import Candle
+    from tickerflow.models import Candles
 
 # TTL in seconds, keyed by interval string
 _TTL: dict[str, int] = {
@@ -32,7 +32,7 @@ _TTL: dict[str, int] = {
 _DEFAULT_TTL = 60  # fallback for unmapped intervals
 
 # Internal store: key → (expires_at, candles)
-_store: dict[tuple[str, str, int], tuple[float, list[Candle]]] = {}
+_store: dict[tuple[str, str, int], tuple[float, Candles]] = {}
 
 
 def is_enabled() -> bool:
@@ -45,7 +45,7 @@ def ttl_for(interval: str) -> int:
     return _TTL.get(interval, _DEFAULT_TTL)
 
 
-def get(symbol: str, interval: str, limit: int) -> list[Candle] | None:
+def get(symbol: str, interval: str, limit: int) -> Candles | None:
     """Return cached candles if present and not expired, else None."""
     key = (symbol.upper(), interval, limit)
     entry = _store.get(key)
@@ -58,7 +58,7 @@ def get(symbol: str, interval: str, limit: int) -> list[Candle] | None:
     return candles
 
 
-def set(symbol: str, interval: str, limit: int, candles: list[Candle]) -> None:
+def set(symbol: str, interval: str, limit: int, candles: Candles) -> None:
     """Store candles in the cache with the appropriate TTL for the interval."""
     key = (symbol.upper(), interval, limit)
     _store[key] = (time.monotonic() + ttl_for(interval), candles)

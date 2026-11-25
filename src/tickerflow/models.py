@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 
@@ -30,3 +31,11 @@ class Candle:
             raise ValueError(f"high ({self.high}) must be >= low ({self.low})")
         if self.time <= 0:
             raise ValueError(f"time must be a positive unix timestamp, got {self.time}")
+
+
+class Candles(list[Candle]):
+    """Candles oldest first, with the name of the provider that served them."""
+
+    def __init__(self, candles: Iterable[Candle] = (), provider: str = "") -> None:
+        super().__init__(candles)
+        self.provider = provider

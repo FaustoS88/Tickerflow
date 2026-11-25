@@ -13,6 +13,7 @@ import re
 
 import requests
 
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
 from tickerflow.providers.base import OHLCVProvider, market_window
 
@@ -58,7 +59,7 @@ class TiingoProvider(OHLCVProvider):
     ) -> list[Candle] | None:
         resample = _RESAMPLE.get(interval)
         if resample is None:
-            return None  # intraday not supported
+            raise ProviderError("serves 1d and 1w bars only")
 
         api_key = os.getenv("TIINGO_API_KEY")
         if not api_key:
@@ -113,11 +114,8 @@ class TiingoProvider(OHLCVProvider):
             "resampleFreq": resample,
             "format": "json",
         }
-        try:
-            resp = requests.get(url, headers=headers, params=params, timeout=10)
-            if resp.status_code != 200:
-                return None
-            data = resp.json()
-            return data if isinstance(data, list) else None
-        except Exception:  # noqa: BLE001
-            return None
+        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        if resp.status_code != 200:
+            raise ProviderError(f"HTTP {resp.status_code}")
+        data = resp.json()
+        return data if isinstance(data, list) else None

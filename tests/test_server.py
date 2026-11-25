@@ -7,7 +7,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from tickerflow.models import Candle
+from tickerflow.errors import NoDataError
+from tickerflow.models import Candle, Candles
 from tickerflow.server import app
 
 
@@ -17,11 +18,14 @@ def client() -> TestClient:
 
 
 @pytest.fixture
-def sample_candles() -> list[Candle]:
-    return [
-        Candle(time=1_700_000_000, open=100.0, high=110.0, low=95.0, close=105.0, volume=1000.0),
-        Candle(time=1_700_086_400, open=105.0, high=115.0, low=100.0, close=112.0, volume=1500.0),
-    ]
+def sample_candles() -> Candles:
+    return Candles(
+        [
+            Candle(time=1_700_000_000, open=100.0, high=110.0, low=95.0, close=105.0, volume=1000.0),
+            Candle(time=1_700_086_400, open=105.0, high=115.0, low=100.0, close=112.0, volume=1500.0),
+        ],
+        provider="kraken",
+    )
 
 
 def test_health(client: TestClient) -> None:
@@ -44,7 +48,7 @@ def test_providers_stock(client: TestClient) -> None:
     assert "yfinance" in data["providers"]
 
 
-def test_ohlcv_success(client: TestClient, sample_candles: list[Candle]) -> None:
+def test_ohlcv_success(client: TestClient, sample_candles: Candles) -> None:
     with patch("tickerflow.server._fetch", new_callable=AsyncMock) as mock_fetch:
         mock_fetch.return_value = sample_candles
         resp = client.get("/ohlcv/BTCUSDT?interval=1d&limit=10")
@@ -52,6 +56,7 @@ def test_ohlcv_success(client: TestClient, sample_candles: list[Candle]) -> None
         data = resp.json()
         assert data["symbol"] == "BTCUSDT"
         assert data["interval"] == "1d"
+        assert data["provider"] == "kraken"
         assert data["count"] == 2
         assert len(data["candles"]) == 2
         assert data["candles"][0]["open"] == 100.0
@@ -59,9 +64,10 @@ def test_ohlcv_success(client: TestClient, sample_candles: list[Candle]) -> None
 
 def test_ohlcv_not_found(client: TestClient) -> None:
     with patch("tickerflow.server._fetch", new_callable=AsyncMock) as mock_fetch:
-        mock_fetch.return_value = None
+        mock_fetch.side_effect = NoDataError("INVALIDSYMBOL", "1d", {})
         resp = client.get("/ohlcv/INVALIDSYMBOL?interval=1d&limit=10")
         assert resp.status_code == 404
+        assert resp.json()["detail"] == "no data for INVALIDSYMBOL 1d: no provider supports INVALIDSYMBOL"
 
 
 def test_ohlcv_invalid_interval(client: TestClient) -> None:

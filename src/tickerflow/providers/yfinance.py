@@ -8,6 +8,7 @@ import re
 
 import yfinance as yf
 
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
 from tickerflow.providers.base import OHLCVProvider, market_window
 
@@ -99,46 +100,68 @@ class YFinanceProvider(OHLCVProvider):
         interval: str,
         limit: int,
     ) -> list[Candle] | None:
-        yf_interval = _INTERVAL_MAP.get(interval)
-        if yf_interval is None:
-            return None  # unsupported interval (e.g. 4h)
-
-        ticker = _to_yf_symbol(symbol)
+        yf_interval = _yf_interval(interval)
         window = market_window(_BAR_DURATION[interval], limit)
         window = min(window, _MAX_LOOKBACK.get(interval, window))
         start = datetime.datetime.now(datetime.UTC) - window
 
-        df = await asyncio.to_thread(self._download, ticker, yf_interval, start)
-        if df is None or df.empty:
+        df = await asyncio.to_thread(self._download, _to_yf_symbol(symbol), yf_interval, start)
+        return _candles(df.tail(limit)) if df is not None else None
+
+    async def fetch_range(
+        self,
+        symbol: str,
+        interval: str,
+        start: int,
+        end: int,
+    ) -> list[Candle] | None:
+        yf_interval = _yf_interval(interval)
+        begin = datetime.datetime.fromtimestamp(start, datetime.UTC)
+        lookback = _MAX_LOOKBACK.get(interval)
+        if lookback and datetime.datetime.now(datetime.UTC) - begin > lookback:
+            raise ProviderError(f"Yahoo serves {interval} bars for the last {lookback.days} days")
+        # An end in the future would stretch the request past Yahoo's intraday limits
+        finish = min(datetime.datetime.fromtimestamp(end, datetime.UTC), datetime.datetime.now(datetime.UTC))
+        df = await asyncio.to_thread(
+            self._download, _to_yf_symbol(symbol), yf_interval, begin, finish
+        )
+        if df is None:
             return None
-
-        candles: list[Candle] = []
-        for ts, row in df.tail(limit).iterrows():
-            try:
-                candles.append(
-                    Candle(
-                        time=int(ts.timestamp()),
-                        open=float(row["Open"]),
-                        high=float(row["High"]),
-                        low=float(row["Low"]),
-                        close=float(row["Close"]),
-                        volume=float(row.get("Volume", 0.0) or 0.0),
-                    )
-                )
-            except (ValueError, KeyError):
-                continue
-
-        return candles or None
+        return [c for c in _candles(df) or [] if start <= c.time < end] or None
 
     @staticmethod
-    def _download(ticker: str, interval: str, start: datetime.datetime):
+    def _download(
+        ticker: str,
+        interval: str,
+        start: datetime.datetime,
+        end: datetime.datetime | None = None,
+    ):
         """Blocking yfinance fetch — called via asyncio.to_thread."""
+        df = yf.Ticker(ticker).history(start=start, end=end, interval=interval, auto_adjust=True)
+        return df if not df.empty else None
+
+
+def _yf_interval(interval: str) -> str:
+    yf_interval = _INTERVAL_MAP.get(interval)
+    if yf_interval is None:
+        raise ProviderError(f"no {interval} bars")
+    return yf_interval
+
+
+def _candles(df) -> list[Candle] | None:
+    candles: list[Candle] = []
+    for ts, row in df.iterrows():
         try:
-            df = yf.Ticker(ticker).history(
-                start=start,
-                interval=interval,
-                auto_adjust=True,
+            candles.append(
+                Candle(
+                    time=int(ts.timestamp()),
+                    open=float(row["Open"]),
+                    high=float(row["High"]),
+                    low=float(row["Low"]),
+                    close=float(row["Close"]),
+                    volume=float(row.get("Volume", 0.0) or 0.0),
+                )
             )
-            return df if not df.empty else None
-        except Exception:  # noqa: BLE001
-            return None
+        except (ValueError, KeyError):
+            continue
+    return candles or None

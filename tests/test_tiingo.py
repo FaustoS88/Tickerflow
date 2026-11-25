@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
 from tickerflow.providers.tiingo import TiingoProvider
 
@@ -77,12 +78,13 @@ def test_supports(provider: TiingoProvider, symbol: str, expected: bool) -> None
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_for_intraday(
+async def test_fetch_raises_for_intraday(
     provider: TiingoProvider, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("TIINGO_API_KEY", "test-key")
     for interval in ("1m", "5m", "15m", "30m", "1h", "4h"):
-        assert await provider.fetch("AAPL", interval, 10) is None
+        with pytest.raises(ProviderError, match="1d and 1w bars only"):
+            await provider.fetch("AAPL", interval, 10)
 
 
 @pytest.mark.asyncio
@@ -252,7 +254,7 @@ async def test_fetch_passes_auth_header(
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_http_error(
+async def test_fetch_raises_on_http_error(
     provider: TiingoProvider, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("TIINGO_API_KEY", "test-key")
@@ -260,22 +262,22 @@ async def test_fetch_returns_none_on_http_error(
     mock_resp = MagicMock()
     mock_resp.status_code = 404
 
-    with patch("requests.get", return_value=mock_resp):
-        result = await provider.fetch("AAPL", "1d", 10)
-
-    assert result is None
+    with patch("requests.get", return_value=mock_resp), pytest.raises(
+        ProviderError, match="HTTP 404"
+    ):
+        await provider.fetch("AAPL", "1d", 10)
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_network_error(
+async def test_fetch_passes_the_network_error_on(
     provider: TiingoProvider, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("TIINGO_API_KEY", "test-key")
 
-    with patch("requests.get", side_effect=Exception("timeout")):
-        result = await provider.fetch("AAPL", "1d", 10)
-
-    assert result is None
+    with patch("requests.get", side_effect=Exception("timeout")), pytest.raises(
+        Exception, match="timeout"
+    ):
+        await provider.fetch("AAPL", "1d", 10)
 
 
 @pytest.mark.asyncio
@@ -352,28 +354,28 @@ def test_download_returns_list_on_success(monkeypatch: pytest.MonkeyPatch) -> No
     assert result == rows
 
 
-def test_download_returns_none_on_non_200(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_download_raises_on_non_200(monkeypatch: pytest.MonkeyPatch) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 500
 
-    with patch("requests.get", return_value=mock_resp):
-        result = TiingoProvider._download(
+    with patch("requests.get", return_value=mock_resp), pytest.raises(
+        ProviderError, match="HTTP 500"
+    ):
+        TiingoProvider._download(
             "AAPL",
             "daily",
             datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
             "key",
         )
 
-    assert result is None
 
-
-def test_download_returns_none_on_exception() -> None:
-    with patch("requests.get", side_effect=ConnectionError("dns failure")):
-        result = TiingoProvider._download(
+def test_download_passes_the_exception_on() -> None:
+    with patch("requests.get", side_effect=ConnectionError("dns failure")), pytest.raises(
+        ConnectionError, match="dns failure"
+    ):
+        TiingoProvider._download(
             "AAPL",
             "daily",
             datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
             "key",
         )
-
-    assert result is None

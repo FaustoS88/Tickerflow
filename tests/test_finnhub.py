@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
 from tickerflow.providers.finnhub import FinnhubProvider, _to_forex_symbol
 
@@ -76,12 +77,12 @@ def test_supports(provider: FinnhubProvider, symbol: str, expected: bool) -> Non
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_for_unsupported_interval(
+async def test_fetch_raises_for_unsupported_interval(
     provider: FinnhubProvider, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("FINNHUB_API_KEY", "test-key")
-    result = await provider.fetch("AAPL", "4h", 10)
-    assert result is None
+    with pytest.raises(ProviderError, match="no 4h bars"):
+        await provider.fetch("AAPL", "4h", 10)
 
 
 @pytest.mark.asyncio
@@ -255,7 +256,7 @@ async def test_fetch_returns_none_when_status_not_ok(
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_client_exception(
+async def test_fetch_passes_the_client_exception_on(
     provider: FinnhubProvider, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("FINNHUB_API_KEY", "test-key")
@@ -263,14 +264,14 @@ async def test_fetch_returns_none_on_client_exception(
     mock_client = MagicMock()
     mock_client.stock_candles.side_effect = Exception("API rate limit")
 
-    with patch("finnhub.Client", return_value=mock_client):
-        result = await provider.fetch("AAPL", "1d", 10)
-
-    assert result is None
+    with patch("finnhub.Client", return_value=mock_client), pytest.raises(
+        Exception, match="API rate limit"
+    ):
+        await provider.fetch("AAPL", "1d", 10)
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_forex_exception(
+async def test_fetch_passes_the_forex_exception_on(
     provider: FinnhubProvider, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("FINNHUB_API_KEY", "test-key")
@@ -278,10 +279,10 @@ async def test_fetch_returns_none_on_forex_exception(
     mock_client = MagicMock()
     mock_client.forex_candles.side_effect = Exception("connection error")
 
-    with patch("finnhub.Client", return_value=mock_client):
-        result = await provider.fetch("EURUSD", "1h", 10)
-
-    assert result is None
+    with patch("finnhub.Client", return_value=mock_client), pytest.raises(
+        Exception, match="connection error"
+    ):
+        await provider.fetch("EURUSD", "1h", 10)
 
 
 @pytest.mark.asyncio
@@ -350,3 +351,19 @@ def test_parse_returns_most_recent_bars_on_limit() -> None:
     assert result is not None
     # should be the last 3 bars (most recent timestamps)
     assert result[0].time == 1_700_000_000 + 7 * 86400
+
+
+@pytest.mark.asyncio
+async def test_fetch_masks_the_key_in_the_reason(
+    provider: FinnhubProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FINNHUB_API_KEY", "secret-key")
+
+    mock_client = MagicMock()
+    mock_client.stock_candles.side_effect = Exception("timeout for /stock/candle?token=secret-key")
+
+    with patch("finnhub.Client", return_value=mock_client), pytest.raises(ProviderError) as err:
+        await provider.fetch("AAPL", "1d", 10)
+    assert "secret-key" not in str(err.value)
+    assert "token=***" in str(err.value)
+    assert err.value.__cause__ is None and err.value.__suppress_context__
