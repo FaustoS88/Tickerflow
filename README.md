@@ -1,26 +1,79 @@
 # tickerflow
 
-**One `await fetch()` call. Crypto, stocks, forex. Zero API keys. Automatic provider fallback.**
+**Async OHLCV for crypto, stocks and forex behind one `fetch()` call.**
+Crypto needs no API keys and falls back across Binance, CoinGecko, Kraken, KuCoin and Yahoo Finance.
+Stocks and forex come from yfinance; Tiingo (stocks) and Finnhub are fallbacks once you add a key.
 
 [![CI](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/tickerflow?logo=pypi&logoColor=white&style=flat-square)](https://pypi.org/project/tickerflow/)
 [![Python](https://img.shields.io/pypi/pyversions/tickerflow?logo=python&logoColor=white&style=flat-square)](https://pypi.org/project/tickerflow/)
-[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](https://github.com/FaustoS88/Tickerflow/blob/main/LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/FaustoS88/Tickerflow?style=social)](https://github.com/FaustoS88/Tickerflow)
 
 ---
 
 ```python
+import asyncio
 from tickerflow import fetch
 
-candles = await fetch("BTCUSDT")   # crypto  → Binance → CoinGecko → Kraken → KuCoin → yfinance
-candles = await fetch("AAPL")      # stocks  → yfinance → Tiingo → Finnhub
-candles = await fetch("EURUSD")    # forex   → yfinance → Finnhub
+async def main():
+    btc = await fetch("BTCUSDT")    # crypto  → Binance → CoinGecko → Kraken → KuCoin → yfinance
+    aapl = await fetch("AAPL")      # stocks  → yfinance → Tiingo → Finnhub
+    eur = await fetch("EURUSD")     # forex   → yfinance → Finnhub
+    print(btc[-1].close, aapl[-1].close, eur[-1].close)
+
+asyncio.run(main())
 ```
 
-One function. Any ticker. Any asset class. If the first provider fails, the next one picks up — automatically. No API keys needed for basic use.
+Real output of the CLI, run on 2026-11-25 (times are Unix seconds, bar open):
 
-![demo](https://raw.githubusercontent.com/FaustoS88/Tickerflow/main/assets/demo.gif)
+```console
+$ tickerflow fetch BTCUSDT 1d 5
+
+        time        open        high         low       close          volume
+  1795219200  58951.5100  60996.0000  55130.0000  60215.7700        48558.10
+  1795305600  60215.7800  61669.9900  58768.5100  61271.0800        20137.13
+  1795392000  61271.0900  64603.1200  60386.0000  61270.9300        27493.88
+  1795478400  61270.9200  61682.0100  59260.0000  59832.0000        19707.40
+  1795564800  59832.0000  59950.0000  57300.3800  59674.4400        21870.02
+
+$ tickerflow chart BTCUSDT 1d 30 --no-color
+BTCUSDT · 1d · 30 candles
+ 83,313
+        ███     ││
+        █│█     ██
+          ████████
+ 76,366    ││ ██│████│
+                 ││ █████
+                    ││││█
+                        ██
+                         █
+ 67,682                  ██
+                          ███│
+                          █████│   │
+                          ││ │███ │││
+ 60,735                        │█████│
+                                ██│ ██
+                                ││   │
+                                 │
+ 53,788
+        ┼──────────────────────────────
+    vol                          █
+                          █     ██
+          ██    ██       █████████████
+        ███████████ ██████████████████
+        27/10       10/11        25/11
+```
+
+## Limitations
+
+- Without API keys, stocks and forex have a single source (yfinance).
+- `4h` bars are available for crypto only.
+- Crypto pairs quoted in fiat, such as `BTCEUR`, are read as forex and return no data.
+- `fetch()` returns the most recent bars only (up to 1,000 on Binance, 1,500 on KuCoin, 720 on Kraken); there is no date-range query yet.
+- On exchanges the last bar is the current, unfinished one, and cached results are reused for the interval's TTL (4 hours for `1d`).
+- CoinGecko prices every pair in USD and, for `1d`, returns 4-day candles without volume.
+- Call `await teardown()` (from `tickerflow.registry`) before your event loop closes.
 
 ## Install
 
@@ -33,7 +86,6 @@ Extras for power users:
 ```bash
 pip install "tickerflow[pandas]"   # DataFrame output
 pip install "tickerflow[serve]"    # self-hosted API server
-pip install "tickerflow[chart]"    # terminal charts
 pip install "tickerflow[ai]"       # Pydantic AI integration
 pip install "tickerflow[all]"      # everything
 ```
@@ -43,6 +95,7 @@ pip install "tickerflow[all]"      # everything
 ```python
 import asyncio
 from tickerflow import fetch
+from tickerflow.registry import teardown
 
 async def main():
     # Fetch 10 daily candles — provider is auto-selected
@@ -53,6 +106,8 @@ async def main():
     # Want a DataFrame instead? One flag.
     df = await fetch("AAPL", interval="1d", limit=30, as_dataframe=True)
     print(df.describe())
+
+    await teardown()  # close the shared HTTP session before the loop ends
 
 asyncio.run(main())
 ```
@@ -105,13 +160,15 @@ curl localhost:8000/providers/BTCUSDT
 curl localhost:8000/health
 ```
 
-Returns structured JSON — plug it into any frontend, dashboard, or automation. No rate limit, no vendor lock-in, runs on your machine.
+Returns structured JSON — plug it into any frontend, dashboard, or automation. No vendor lock-in, runs on your machine; the upstream providers keep their own rate limits.
+
+By default the server binds to `0.0.0.0` and allows any CORS origin; pass `--host 127.0.0.1` to keep it local.
 
 Requires: `pip install "tickerflow[serve]"`
 
 ## DataFrame Output
 
-90% of Python finance users want a DataFrame. One flag:
+Prefer a DataFrame? One flag:
 
 ```python
 df = await fetch("BTCUSDT", interval="1d", limit=30, as_dataframe=True)
@@ -129,21 +186,19 @@ The router automatically detects asset class from the symbol and tries providers
 ```
 BTCUSDT  →  Binance  →  CoinGecko  →  Kraken  →  KuCoin  →  yfinance
 AAPL     →  yfinance  →  Tiingo (daily/weekly)  →  Finnhub
-WM.TO    →  yfinance  →  Finnhub
+RY.TO    →  yfinance  →  Finnhub
 EURUSD   →  yfinance  →  Finnhub
 ```
 
-![fallback](https://raw.githubusercontent.com/FaustoS88/Tickerflow/main/assets/fallback.gif)
-
-| Provider  | Latency     | Key required | Asset classes       |
-|-----------|-------------|--------------|---------------------|
-| Binance   | ~50–150 ms  | No           | Crypto              |
-| KuCoin    | ~100–200 ms | No           | Crypto              |
-| Kraken    | ~100–250 ms | No           | Crypto              |
-| CoinGecko | ~200–400 ms | No           | Crypto              |
-| yfinance  | ~300–800 ms | No           | Stocks, Forex, Crypto |
-| Tiingo    | ~200–400 ms | Yes (free)   | Stocks, ETFs        |
-| Finnhub   | ~200–500 ms | Yes (paid)   | Stocks, Forex       |
+| Provider  | Key required | Asset classes         |
+|-----------|--------------|-----------------------|
+| Binance   | No           | Crypto                |
+| KuCoin    | No           | Crypto                |
+| Kraken    | No           | Crypto                |
+| CoinGecko | No           | Crypto                |
+| yfinance  | No           | Stocks, Forex, Crypto |
+| Tiingo    | Yes (free)   | Stocks, ETFs          |
+| Finnhub   | Yes (paid)   | Stocks, Forex         |
 
 ## Supported Intervals
 
@@ -184,7 +239,7 @@ async def fetch_market_data(ctx, symbol: str, interval: str = "1d", limit: int =
     return f"{symbol}: O={last.open:.2f} H={last.high:.2f} L={last.low:.2f} C={last.close:.2f}"
 ```
 
-See [examples/pydantic_ai_agent.py](examples/pydantic_ai_agent.py) for a complete working agent.
+See [examples/pydantic_ai_agent.py](https://github.com/FaustoS88/Tickerflow/blob/main/examples/pydantic_ai_agent.py) for a complete working agent.
 
 Requires: `pip install "tickerflow[ai]"`
 
@@ -192,16 +247,16 @@ Requires: `pip install "tickerflow[ai]"`
 
 I built tickerflow because I was tired of wiring up different API clients for crypto vs stocks vs forex. I wanted one async `fetch()` call that handles everything — and falls back automatically when a provider is down.
 
-This is the market data layer for my [Pydantic AI Pine Script Expert](https://github.com/FaustoS88/Pydantic-AI-Pinescript-Expert) agent. If you're building AI agents, trading bots, or data pipelines that need multi-asset OHLCV data with zero configuration — this is it.
+It is meant for scripts, AI agents and small trading tools that need multi-asset OHLCV data without setting up one client per provider.
 
 ## Examples
 
-See [examples/](examples/) for runnable scripts:
+See [examples/](https://github.com/FaustoS88/Tickerflow/tree/main/examples) for runnable scripts:
 
-- [basic_fetch.py](examples/basic_fetch.py) — fetch candles for crypto, stock, and forex
-- [multi_provider.py](examples/multi_provider.py) — inspect provider chains and observe fallback
-- [pandas_output.py](examples/pandas_output.py) — DataFrame output for quick analysis
-- [pydantic_ai_agent.py](examples/pydantic_ai_agent.py) — AI agent with market data tools
+- [basic_fetch.py](https://github.com/FaustoS88/Tickerflow/blob/main/examples/basic_fetch.py) — fetch candles for crypto, stock, and forex
+- [multi_provider.py](https://github.com/FaustoS88/Tickerflow/blob/main/examples/multi_provider.py) — inspect provider chains and observe fallback
+- [pandas_output.py](https://github.com/FaustoS88/Tickerflow/blob/main/examples/pandas_output.py) — DataFrame output for quick analysis
+- [pydantic_ai_agent.py](https://github.com/FaustoS88/Tickerflow/blob/main/examples/pydantic_ai_agent.py) — AI agent with market data tools
 
 ## Roadmap
 
@@ -214,11 +269,12 @@ See [examples/](examples/) for runnable scripts:
 **Planned**
 - OKX and Bybit providers
 - WebSocket streaming
+- Date-range queries with pagination where the exchange allows it
 - Async context manager support
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, how to add providers, and PR guidelines.
+See [CONTRIBUTING.md](https://github.com/FaustoS88/Tickerflow/blob/main/CONTRIBUTING.md) for development setup, how to add providers, and PR guidelines.
 
 ## License
 

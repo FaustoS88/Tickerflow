@@ -21,7 +21,7 @@ async def main() -> None:
     symbols = [
         ("BTCUSDT", "1d", 5),   # crypto  — Binance primary
         ("AAPL",    "1d", 5),   # US stock — yfinance primary
-        ("WM.TO",   "1d", 5),   # intl stock — yfinance primary
+        ("RY.TO",   "1d", 5),   # intl stock — yfinance primary
         ("EURUSD",  "1d", 5),   # forex   — yfinance primary
     ]
 
