@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from tests.upstream import Upstream
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
 from tickerflow.providers.binance import _KLINES_URL, BinanceProvider
 
@@ -97,13 +98,12 @@ async def test_fetch_multiple_candles(provider: BinanceProvider, upstream: Upstr
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_http_error(
+async def test_fetch_raises_with_the_status_on_http_error(
     provider: BinanceProvider, upstream: Upstream
 ) -> None:
     upstream.reply("/binance", {"code": -1121, "msg": "Invalid symbol."}, status=400)
-    result = await provider.fetch("BTCUSDT", "1d", 10)
-
-    assert result is None
+    with pytest.raises(ProviderError, match="HTTP 400"):
+        await provider.fetch("BTCUSDT", "1d", 10)
 
 
 @pytest.mark.asyncio
@@ -117,17 +117,16 @@ async def test_fetch_returns_none_on_empty_response(
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_for_unsupported_interval(provider: BinanceProvider) -> None:
+async def test_fetch_raises_for_unsupported_interval(provider: BinanceProvider) -> None:
     # No HTTP call should be made — provider rejects the interval before fetching
-    result = await provider.fetch("BTCUSDT", "2d", 10)
-    assert result is None
+    with pytest.raises(ProviderError, match="no 2d bars"):
+        await provider.fetch("BTCUSDT", "2d", 10)
 
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_on_server_error(
+async def test_fetch_raises_on_server_error(
     provider: BinanceProvider, upstream: Upstream
 ) -> None:
     upstream.reply("/binance", {}, status=500)
-    result = await provider.fetch("BTCUSDT", "1d", 10)
-
-    assert result is None
+    with pytest.raises(ProviderError, match="HTTP 500"):
+        await provider.fetch("BTCUSDT", "1d", 10)

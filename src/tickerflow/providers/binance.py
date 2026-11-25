@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-import logging
 import re
 
 import aiohttp
 
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
-from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider
-
-logger = logging.getLogger(__name__)
+from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider, paginate
 
 _KLINES_URL = "https://api.binance.com/api/v3/klines"
+
+#: Most bars Binance returns per request
+_PAGE = 1000
 
 # Intervals accepted by Binance that tickerflow exposes
 _VALID_INTERVALS = frozenset(
@@ -35,7 +36,8 @@ class BinanceProvider(OHLCVProvider):
     """Fetches OHLCV klines from the Binance public REST API.
 
     No API key required. Covers any pair quoted in USDT, USDC, BTC, ETH,
-    BNB, BUSD, or FDUSD. Returns up to 1 000 bars per request (Binance cap).
+    BNB, BUSD, or FDUSD. Requests past 1 000 bars (Binance's cap per call)
+    and date ranges are paged back from the newest bar.
     """
 
     name = "binance"
@@ -49,40 +51,56 @@ class BinanceProvider(OHLCVProvider):
         interval: str,
         limit: int,
     ) -> list[Candle] | None:
-        ticker = _normalise(symbol)
+        candles = await self._walk(symbol, interval, limit=limit)
+        return candles[-limit:] or None
 
+    async def fetch_range(
+        self,
+        symbol: str,
+        interval: str,
+        start: int,
+        end: int,
+    ) -> list[Candle] | None:
+        candles = await self._walk(symbol, interval, end=end - 1, start=start)
+        return [c for c in candles if c.time >= start] or None
+
+    async def _walk(
+        self,
+        symbol: str,
+        interval: str,
+        *,
+        end: int | None = None,
+        limit: int | None = None,
+        start: int | None = None,
+    ) -> list[Candle]:
         if interval not in _VALID_INTERVALS:
-            return None
-
-        params = {
-            "symbol": ticker,
-            "interval": interval,
-            "limit": min(limit, 1000),
-        }
+            raise ProviderError(f"no {interval} bars")
+        ticker = _normalise(symbol)
+        size = min(limit, _PAGE) if limit else _PAGE
 
         # One session per call, like the other providers: nothing stays bound to a closed event loop
-        async with (
-            aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session,
-            session.get(_KLINES_URL, params=params) as resp,
-        ):
-            if resp.status != 200:
-                logger.warning("binance HTTP %d for %s", resp.status, ticker)
-                return None
-            data = await resp.json(content_type=None)
+        async with aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session:
 
-        if not data:
-            return None
+            async def page(before: int | None) -> list[Candle]:
+                params: dict[str, str | int] = {"symbol": ticker, "interval": interval, "limit": size}
+                if before is not None:
+                    params["endTime"] = before * 1000 + 999
+                async with session.get(_KLINES_URL, params=params) as resp:
+                    if resp.status != 200:
+                        raise ProviderError(f"HTTP {resp.status}")
+                    data = await resp.json(content_type=None)
+                # Binance kline row layout (positions 0-5):
+                # [open_time_ms, open, high, low, close, volume, close_time_ms, ...]
+                return [
+                    Candle(
+                        time=int(row[0]) // 1000,  # milliseconds → seconds
+                        open=float(row[1]),
+                        high=float(row[2]),
+                        low=float(row[3]),
+                        close=float(row[4]),
+                        volume=float(row[5]),
+                    )
+                    for row in data or []
+                ]
 
-        # Binance kline row layout (positions 0-5):
-        # [open_time_ms, open, high, low, close, volume, close_time_ms, ...]
-        return [
-            Candle(
-                time=int(row[0]) // 1000,  # milliseconds → seconds
-                open=float(row[1]),
-                high=float(row[2]),
-                low=float(row[3]),
-                close=float(row[4]),
-                volume=float(row[5]),
-            )
-            for row in data
-        ]
+            return await paginate(page, end=end, limit=limit, start=start)

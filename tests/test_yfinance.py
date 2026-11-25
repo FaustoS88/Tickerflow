@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
 from tickerflow.providers.base import market_window
 from tickerflow.providers.yfinance import (
@@ -131,9 +132,9 @@ async def test_fetch_oldest_first(provider: YFinanceProvider) -> None:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_fetch_returns_none_for_unsupported_interval(provider: YFinanceProvider) -> None:
-    result = await provider.fetch("AAPL", "4h", 10)
-    assert result is None
+async def test_fetch_raises_for_unsupported_interval(provider: YFinanceProvider) -> None:
+    with pytest.raises(ProviderError, match="no 4h bars"):
+        await provider.fetch("AAPL", "4h", 10)
 
 
 @pytest.mark.asyncio

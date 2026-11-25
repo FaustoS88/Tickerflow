@@ -9,17 +9,18 @@ to ``XBTUSDT`` before hitting the API.
 
 from __future__ import annotations
 
-import logging
 import re
 
 import aiohttp
 
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
-from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider
-
-logger = logging.getLogger(__name__)
+from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider, utc
 
 _BASE_URL = "https://api.kraken.com/0/public/OHLC"
+
+#: Kraken serves only its most recent bars, whatever ``since`` says
+_MAX_BARS = 720
 
 _CRYPTO_RE = re.compile(r"^[A-Z]{2,}(USDT|USDC|BTC|ETH|BNB)$")
 
@@ -52,7 +53,7 @@ class KrakenProvider(OHLCVProvider):
     """Fetches OHLCV candles from the Kraken public REST API.
 
     No API key required. Covers crypto pairs quoted in USDT, USDC, BTC,
-    ETH, or BNB. Returns up to 720 bars per request.
+    ETH, or BNB. Serves its last 720 bars only, date ranges included.
     """
 
     name = "kraken"
@@ -68,27 +69,21 @@ class KrakenProvider(OHLCVProvider):
     ) -> list[Candle] | None:
         kraken_interval = _INTERVAL_MAP.get(interval)
         if kraken_interval is None:
-            return None
+            raise ProviderError(f"no {interval} bars")
 
         pair = _normalise(symbol)
         params = {"pair": pair, "interval": kraken_interval}
 
-        try:
-            async with (
-                aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session,
-                session.get(_BASE_URL, params=params) as resp,
-            ):
-                if resp.status != 200:
-                    logger.warning("kraken HTTP %d for %s", resp.status, symbol)
-                    return None
-                data = await resp.json(content_type=None)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("kraken request failed for %s: %s", symbol, exc)
-            return None
+        async with (
+            aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session,
+            session.get(_BASE_URL, params=params) as resp,
+        ):
+            if resp.status != 200:
+                raise ProviderError(f"HTTP {resp.status}")
+            data = await resp.json(content_type=None)
 
         if data.get("error"):
-            logger.warning("kraken API error for %s: %s", symbol, data["error"])
-            return None
+            raise ProviderError(f"API error: {', '.join(data['error'])}")
 
         result = data.get("result", {})
         # The result key is the Kraken pair name, which may differ from
@@ -121,3 +116,21 @@ class KrakenProvider(OHLCVProvider):
                 continue
 
         return candles[-limit:] or None
+
+    async def fetch_range(
+        self,
+        symbol: str,
+        interval: str,
+        start: int,
+        end: int,
+    ) -> list[Candle] | None:
+        candles = await self.fetch(symbol, interval, _MAX_BARS)
+        if not candles:
+            return None
+        # A full window may hide older bars that open at or after start
+        full = len(candles) >= _MAX_BARS
+        if full and start <= candles[0].time - _INTERVAL_MAP[interval] * 60:
+            raise ProviderError(
+                f"serves only its last {_MAX_BARS} {interval} bars, from {utc(candles[0].time)}"
+            )
+        return [c for c in candles if start <= c.time < end] or None

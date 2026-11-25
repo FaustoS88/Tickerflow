@@ -6,16 +6,17 @@ Endpoint: GET https://api.kucoin.com/api/v1/market/candles
 
 from __future__ import annotations
 
-import logging
 import re
 import time
 
 import aiohttp
 
+from tickerflow.errors import ProviderError
 from tickerflow.models import Candle
-from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider
+from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider, paginate
 
-logger = logging.getLogger(__name__)
+#: Most bars KuCoin returns per request
+_PAGE = 1500
 
 _BASE_URL = "https://api.kucoin.com/api/v1/market/candles"
 
@@ -64,7 +65,8 @@ class KuCoinProvider(OHLCVProvider):
     """Fetches OHLCV candles from the KuCoin public REST API.
 
     Supports all crypto pairs listed on KuCoin. No API key required.
-    Returns up to 1500 bars per request. All standard intervals supported.
+    All standard intervals supported. Requests past 1 500 bars (KuCoin's cap
+    per call) and date ranges are paged back from the newest bar.
 
     KuCoin candle row format (index order):
         [timestamp, open, close, high, low, volume, turnover]
@@ -84,60 +86,72 @@ class KuCoinProvider(OHLCVProvider):
         interval: str,
         limit: int,
     ) -> list[Candle] | None:
+        candles = await self._walk(symbol, interval, limit=limit)
+        return candles[-limit:] or None
+
+    async def fetch_range(
+        self,
+        symbol: str,
+        interval: str,
+        start: int,
+        end: int,
+    ) -> list[Candle] | None:
+        candles = await self._walk(symbol, interval, end=end - 1, start=start)
+        return [c for c in candles if c.time >= start] or None
+
+    async def _walk(
+        self,
+        symbol: str,
+        interval: str,
+        *,
+        end: int | None = None,
+        limit: int | None = None,
+        start: int | None = None,
+    ) -> list[Candle]:
         kucoin_interval = _INTERVAL_MAP.get(interval)
         if kucoin_interval is None:
-            return None
-
+            raise ProviderError(f"no {interval} bars")
         bar_sec = _BAR_SECONDS[interval]
-        end_ts = int(time.time())
-        start_ts = end_ts - bar_sec * int(limit * 1.3 + 5)
-
+        # KuCoin answers with the newest bars inside [startAt, endAt]: size the window to one page
+        span = min(int(limit * 1.3 + 5), _PAGE) if limit else _PAGE
         kucoin_symbol = _normalise(symbol)
-        params = {
-            "symbol": kucoin_symbol,
-            "type": kucoin_interval,
-            "startAt": start_ts,
-            "endAt": end_ts,
-        }
 
-        try:
-            async with (
-                aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session,
-                session.get(_BASE_URL, params=params) as resp,
-            ):
-                if resp.status != 200:
-                    logger.warning("kucoin HTTP %d for %s", resp.status, kucoin_symbol)
-                    return None
-                data = await resp.json()
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("kucoin request failed for %s: %s", kucoin_symbol, exc)
-            return None
+        async with aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session:
 
-        if data.get("code") != "200000":
-            logger.warning("kucoin API error code=%s for %s", data.get("code"), kucoin_symbol)
-            return None
+            async def page(before: int | None) -> list[Candle]:
+                end_ts = int(time.time()) if before is None else before
+                start_ts = end_ts - bar_sec * span
+                if start is not None:
+                    start_ts = max(start_ts, start)
+                params = {
+                    "symbol": kucoin_symbol,
+                    "type": kucoin_interval,
+                    "startAt": start_ts,
+                    "endAt": end_ts,
+                }
+                async with session.get(_BASE_URL, params=params) as resp:
+                    if resp.status != 200:
+                        raise ProviderError(f"HTTP {resp.status}")
+                    data = await resp.json()
+                if data.get("code") != "200000":
+                    raise ProviderError(f"API error {data.get('code')}: {data.get('msg', '')}")
 
-        rows = data.get("data")
-        if not rows:
-            return None
+                # KuCoin returns newest-first — reverse to get chronological order
+                candles: list[Candle] = []
+                for row in reversed(data.get("data") or []):
+                    try:
+                        candles.append(
+                            Candle(
+                                time=int(row[0]),
+                                open=float(row[1]),
+                                high=float(row[3]),
+                                low=float(row[4]),
+                                close=float(row[2]),
+                                volume=float(row[5]),
+                            )
+                        )
+                    except (IndexError, ValueError):
+                        continue
+                return candles
 
-        # KuCoin returns newest-first — reverse to get chronological order
-        rows = list(reversed(rows))
-
-        candles: list[Candle] = []
-        for row in rows[-limit:]:
-            try:
-                candles.append(
-                    Candle(
-                        time=int(row[0]),
-                        open=float(row[1]),
-                        high=float(row[3]),
-                        low=float(row[4]),
-                        close=float(row[2]),
-                        volume=float(row[5]),
-                    )
-                )
-            except (IndexError, ValueError):
-                continue
-
-        return candles or None
+            return await paginate(page, end=end, limit=limit, start=start)
