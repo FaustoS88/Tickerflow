@@ -4,9 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+The project was called `ohlcv-hub` from 2026-02-22 (repository and import name), `ohlcv-router` from 2026-03-14 (on PyPI as 0.1.0 to 0.1.2) and `tickerflow` from 2026-08-03 (on PyPI from 0.2.0).
+
 ---
 
 ## [Unreleased]
+
+### Added
+- Python 3.14: CI runs the tests on Python 3.11 to 3.14 and the classifiers list 3.14.
+- A weekly job makes a real request to each provider that needs no key and fails when ETHBTC is not priced in BTC.
 
 ### Fixed
 - Binance opens one HTTP session per request, so a second `asyncio.run` in the same process is served by Binance again instead of falling through to another provider.
@@ -16,7 +22,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - `teardown()` has nothing left to close and is kept as a no-op for compatibility.
+- Releases are published from a version tag by GitHub Actions, only after the tests pass, through PyPI trusted publishing; the tag must match the package version.
 - aiohttp has no upper bound any more (was `<3.11.0`), so tickerflow installs next to ccxt 4.5.94 and litellm 1.111.0, which need aiohttp 3.14. The tests run against a local aiohttp server instead of aioresponses, which is gone from the `dev` extra.
+
+## [0.2.5] — 2026-08-04
+
+### Changed
+- `tickerflow chart` draws ANSI candlesticks with the standard library instead of plotext, so the `chart` extra installs nothing and is kept for compatibility. `--no-color` prints the chart without colours.
+
+### Fixed
+- Install hints quote the extras (`pip install "tickerflow[serve]"`), so they work in zsh.
+
+## [0.2.4] — 2026-08-03
+
+### Fixed
+- `teardown()` closes only the providers that were created, so a crypto-only run no longer imports yfinance at shutdown.
+
+## [0.2.3] — 2026-08-03
+
+### Changed
+- Providers are built only when the fallback chain reaches them, and `registry.pick()` returns provider names instead of provider instances.
+
+### Fixed
+- A provider that cannot be imported or built, or that raises while fetching, hands over to the next one instead of stopping `fetch`.
+- `tickerflow fetch --provider` ignores case, and `tickerflow serve` reports the installed version instead of 0.2.0.
+
+## [0.2.2] — 2026-08-03
+
+### Fixed
+- README images use absolute URLs, so they show on PyPI.
+- Stock symbols follow one pattern, `^\^?[A-Z]{1,5}$`, in every provider and in the registry: Tiingo now accepts index symbols such as `^GSPC`, and yfinance, Finnhub and the registry accept index symbols of up to five letters after the caret (before, any length).
+- `teardown()` closes the HTTP session of every provider, not only Binance's.
+
+## [0.2.1] — 2026-08-03
+
+### Changed
+- README drops the PyPI downloads badge.
 
 ## [0.2.0] — 2026-08-03
 
@@ -36,6 +77,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `pyproject.toml` keywords expanded for PyPI/GitHub discoverability
 - Development status promoted to Beta
 - Python 3.13 added to classifiers
+- aiohttp capped below 3.11 (`aiohttp<3.11.0`)
 
 ## [0.1.2] — 2026-03-14
 
