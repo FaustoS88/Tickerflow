@@ -95,3 +95,9 @@ def test_fetch_rejects_an_unknown_interval(runner: CliRunner) -> None:
     assert result.exit_code != 0
     assert "interval '1D' is not one of" in result.output
 
+
+def test_serve_listens_on_this_machine_by_default(runner: CliRunner) -> None:
+    with patch("uvicorn.run") as run:
+        result = runner.invoke(main, ["serve"])
+    assert result.exit_code == 0, result.output
+    assert run.call_args.kwargs["host"] == "127.0.0.1"

@@ -151,7 +151,7 @@ async def _run_chart(symbol: str, interval: str, limit: int, no_color: bool = Fa
 
 
 @main.command()
-@click.option("--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0).")
+@click.option("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1, this machine only).")
 @click.option("--port", default=8000, type=int, help="Bind port (default: 8000).")
 @click.option("--reload", is_flag=True, default=False, help="Enable auto-reload for development.")
 def serve(host: str, port: int, reload: bool) -> None:
