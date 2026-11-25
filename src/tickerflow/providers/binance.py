@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import re
 
 import aiohttp
 
 from tickerflow.models import Candle
-from tickerflow.providers.base import OHLCVProvider
+from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider
+
+logger = logging.getLogger(__name__)
 
 _KLINES_URL = "https://api.binance.com/api/v3/klines"
 
@@ -18,17 +21,6 @@ _VALID_INTERVALS = frozenset(
 
 # Crypto quote currencies handled by this provider
 _CRYPTO_RE = re.compile(r"^[A-Z]{2,}(USDT|USDC|BTC|ETH|BNB|BUSD|FDUSD)$")
-
-# Module-level session — created once, reused across all requests
-_session: aiohttp.ClientSession | None = None
-
-
-async def _get_session() -> aiohttp.ClientSession:
-    global _session
-    if _session is None or _session.closed:
-        _session = aiohttp.ClientSession()
-    return _session
-
 
 def _normalise(symbol: str) -> str:
     """Return a Binance-compatible symbol string.
@@ -68,9 +60,13 @@ class BinanceProvider(OHLCVProvider):
             "limit": min(limit, 1000),
         }
 
-        session = await _get_session()
-        async with session.get(_KLINES_URL, params=params) as resp:
+        # One session per call, like the other providers: nothing stays bound to a closed event loop
+        async with (
+            aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session,
+            session.get(_KLINES_URL, params=params) as resp,
+        ):
             if resp.status != 200:
+                logger.warning("binance HTTP %d for %s", resp.status, ticker)
                 return None
             data = await resp.json(content_type=None)
 
