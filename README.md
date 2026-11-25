@@ -10,6 +10,8 @@ Stocks and forex come from yfinance; Tiingo (stocks) and Finnhub are fallbacks o
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](https://github.com/FaustoS88/Tickerflow/blob/main/LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/FaustoS88/Tickerflow?style=social)](https://github.com/FaustoS88/Tickerflow)
 
+![tickerflow fetch, chart and serve, recorded on GitHub Actions](https://raw.githubusercontent.com/FaustoS88/Tickerflow/main/assets/demo.gif)
+
 ---
 
 ```python

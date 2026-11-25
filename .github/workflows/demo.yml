@@ -1,0 +1,41 @@
+name: Demo
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "demo.tape"
+      - ".github/workflows/demo.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tickerflow
+        run: |
+          pip install -e ".[serve]"
+          mkdir -p assets
+
+      - name: Record demo.tape
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: demo.tape
+          install-fonts: true
+
+      - name: Upload the GIF
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-gif
+          path: assets/demo.gif
+          if-no-files-found: error
