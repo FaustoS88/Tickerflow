@@ -14,7 +14,7 @@ import re
 import requests
 
 from tickerflow.models import Candle
-from tickerflow.providers.base import OHLCVProvider
+from tickerflow.providers.base import OHLCVProvider, market_window
 
 _BASE_URL = "https://api.tiingo.com/tiingo/daily"
 
@@ -67,8 +67,7 @@ class TiingoProvider(OHLCVProvider):
                 "Get a free key at https://www.tiingo.com/account/api/token"
             )
 
-        bar_delta = _BAR_DURATION[interval]
-        start = datetime.datetime.now(datetime.UTC) - bar_delta * int(limit * 1.2 + 5)
+        start = datetime.datetime.now(datetime.UTC) - market_window(_BAR_DURATION[interval], limit)
 
         ticker = symbol.upper()
         rows = await asyncio.to_thread(

@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Binance opens one HTTP session per request, so a second `asyncio.run` in the same process is served by Binance again instead of falling through to another provider.
 - CoinGecko prices each pair in its quote currency (stablecoins in USD), serves only `4h` (its free API has no daily bars) and stamps candles at their open time, like the exchanges.
 - Every aiohttp provider stops waiting after 10 seconds, so a silent upstream hands over to the next one.
+- yfinance and Tiingo download a window sized for weekends, holidays and trading hours, so stocks and forex return the `limit` bars asked for, up to Yahoo's intraday look-back (AAPL `1h` with limit 100 gave 26 bars, now 100). yfinance intraday requests stay inside that look-back.
 
 ### Changed
 - `teardown()` has nothing left to close and is kept as a no-op for compatibility.

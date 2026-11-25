@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import datetime
+import math
 from abc import ABC, abstractmethod
 
 import aiohttp
@@ -10,6 +12,21 @@ from tickerflow.models import Candle
 
 #: One timeout for every aiohttp provider, so a silent upstream hands over to the next one fast.
 HTTP_TIMEOUT = aiohttp.ClientTimeout(total=10)
+
+#: Trading hours per day the window assumes: a US stock session.
+_SESSION = datetime.timedelta(hours=6, minutes=30)
+
+
+def market_window(bar: datetime.timedelta, limit: int) -> datetime.timedelta:
+    """Calendar time that holds the last *limit* bars of a market open on weekdays only.
+
+    Leaves room for weekends, holidays, half days, closures of up to a week and a
+    session that has not opened yet today.
+    """
+    if bar >= datetime.timedelta(weeks=1):
+        return bar * (limit + 2)
+    market_days = math.ceil(limit / max(1, _SESSION // bar))
+    return datetime.timedelta(days=market_days * 1.5 + 10)
 
 
 class OHLCVProvider(ABC):

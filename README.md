@@ -70,7 +70,7 @@ BTCUSDT · 1d · 30 candles
 - Without API keys, stocks and forex have a single source (yfinance).
 - `4h` bars are available for crypto only.
 - Crypto pairs quoted in fiat, such as `BTCEUR`, are read as forex and return no data.
-- `fetch()` returns the most recent bars only (up to 1,000 on Binance, 1,500 on KuCoin, 720 on Kraken); there is no date-range query yet.
+- `fetch()` returns the most recent bars only (up to 1,000 on Binance, 1,500 on KuCoin, 720 on Kraken; on Yahoo, `1m` reaches 7 days back, `5m` and `15m` 59 days, `1h` 729 days); there is no date-range query yet.
 - On exchanges the last bar is the current, unfinished one, and cached results are reused for the interval's TTL (4 hours for `1d`).
 - CoinGecko serves `4h` bars only (up to 180), without volume, and prices stablecoin pairs in USD.
 
