@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- Binance opens one HTTP session per request, so a second `asyncio.run` in the same process is served by Binance again instead of falling through to another provider.
+- CoinGecko prices each pair in its quote currency (stablecoins in USD), serves only `4h` (its free API has no daily bars) and stamps candles at their open time, like the exchanges.
+- Every aiohttp provider stops waiting after 10 seconds, so a silent upstream hands over to the next one.
+
+### Changed
+- `teardown()` has nothing left to close and is kept as a no-op for compatibility.
+
 ## [0.2.0] — 2026-08-03
 
 ### Added
