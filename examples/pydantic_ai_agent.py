@@ -80,7 +80,7 @@ def create_agent(model_or_name: str | OpenAIChatModel | None = None, api_key: st
         """Fetch OHLCV candles for any crypto, stock, or forex ticker.
 
         Args:
-            symbol:   Ticker — e.g. BTCUSDT, AAPL, EURUSD, WM.TO
+            symbol:   Ticker — e.g. BTCUSDT, AAPL, EURUSD, RY.TO
             interval: Bar size — 1m, 5m, 15m, 1h, 4h, 1d, 1w
             limit:    Number of bars to retrieve (default 30)
         """

@@ -64,7 +64,7 @@ def fetch(
 ) -> None:
     """Fetch OHLCV candles for SYMBOL.
 
-    SYMBOL   Ticker symbol — e.g. BTCUSDT, AAPL, EURUSD, WM.TO\n
+    SYMBOL   Ticker symbol — e.g. BTCUSDT, AAPL, EURUSD, RY.TO\n
     INTERVAL Bar size      — 1m 5m 15m 1h 4h 1d 1w  (default: 1d)\n
     LIMIT    Number of bars to return              (default: 100)
     """
