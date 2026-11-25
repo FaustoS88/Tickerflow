@@ -13,7 +13,7 @@ import time
 import aiohttp
 
 from tickerflow.models import Candle
-from tickerflow.providers.base import OHLCVProvider
+from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider
 
 logger = logging.getLogger(__name__)
 
@@ -101,10 +101,9 @@ class KuCoinProvider(OHLCVProvider):
         }
 
         try:
-            timeout = aiohttp.ClientTimeout(total=10)
             async with (
-                aiohttp.ClientSession() as session,
-                session.get(_BASE_URL, params=params, timeout=timeout) as resp,
+                aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session,
+                session.get(_BASE_URL, params=params) as resp,
             ):
                 if resp.status != 200:
                     logger.warning("kucoin HTTP %d for %s", resp.status, kucoin_symbol)

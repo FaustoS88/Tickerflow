@@ -1,7 +1,7 @@
 # tickerflow
 
 **Async OHLCV for crypto, stocks and forex behind one `fetch()` call.**
-Crypto needs no API keys and falls back across Binance, CoinGecko, Kraken, KuCoin and Yahoo Finance.
+Crypto needs no API keys and falls back across Binance, CoinGecko (4h only), Kraken, KuCoin and Yahoo Finance.
 Stocks and forex come from yfinance; Tiingo (stocks) and Finnhub are fallbacks once you add a key.
 
 [![CI](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FaustoS88/Tickerflow/actions/workflows/ci.yml)
@@ -72,8 +72,7 @@ BTCUSDT · 1d · 30 candles
 - Crypto pairs quoted in fiat, such as `BTCEUR`, are read as forex and return no data.
 - `fetch()` returns the most recent bars only (up to 1,000 on Binance, 1,500 on KuCoin, 720 on Kraken); there is no date-range query yet.
 - On exchanges the last bar is the current, unfinished one, and cached results are reused for the interval's TTL (4 hours for `1d`).
-- CoinGecko prices every pair in USD and, for `1d`, returns 4-day candles without volume.
-- Call `await teardown()` (from `tickerflow.registry`) before your event loop closes.
+- CoinGecko serves `4h` bars only (up to 180), without volume, and prices stablecoin pairs in USD.
 
 ## Install
 
@@ -95,7 +94,6 @@ pip install "tickerflow[all]"      # everything
 ```python
 import asyncio
 from tickerflow import fetch
-from tickerflow.registry import teardown
 
 async def main():
     # Fetch 10 daily candles — provider is auto-selected
@@ -106,8 +104,6 @@ async def main():
     # Want a DataFrame instead? One flag.
     df = await fetch("AAPL", interval="1d", limit=30, as_dataframe=True)
     print(df.describe())
-
-    await teardown()  # close the shared HTTP session before the loop ends
 
 asyncio.run(main())
 ```
@@ -195,7 +191,7 @@ EURUSD   →  yfinance  →  Finnhub
 | Binance   | No           | Crypto                |
 | KuCoin    | No           | Crypto                |
 | Kraken    | No           | Crypto                |
-| CoinGecko | No           | Crypto                |
+| CoinGecko | No           | Crypto (`4h` only)    |
 | yfinance  | No           | Stocks, Forex, Crypto |
 | Tiingo    | Yes (free)   | Stocks, ETFs          |
 | Finnhub   | Yes (paid)   | Stocks, Forex         |

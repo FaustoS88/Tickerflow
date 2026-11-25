@@ -1,7 +1,7 @@
 """Kraken OHLCV provider — crypto candlestick data from the public REST API.
 
 Uses the ``/0/public/OHLC`` endpoint. No API key required.
-Covers any crypto pair listed on Kraken (USDT, USD, EUR, BTC, ETH quotes).
+Covers crypto pairs listed on Kraken and quoted in USDT, USDC, BTC, ETH or BNB.
 
 Kraken uses ``XBT`` for Bitcoin internally, so ``BTCUSDT`` is normalised
 to ``XBTUSDT`` before hitting the API.
@@ -15,7 +15,7 @@ import re
 import aiohttp
 
 from tickerflow.models import Candle
-from tickerflow.providers.base import OHLCVProvider
+from tickerflow.providers.base import HTTP_TIMEOUT, OHLCVProvider
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,8 @@ def _normalise(symbol: str) -> str:
 class KrakenProvider(OHLCVProvider):
     """Fetches OHLCV candles from the Kraken public REST API.
 
-    No API key required. Covers crypto pairs quoted in USDT, USD, EUR,
-    BTC, or ETH. Returns up to 720 bars per request.
+    No API key required. Covers crypto pairs quoted in USDT, USDC, BTC,
+    ETH, or BNB. Returns up to 720 bars per request.
     """
 
     name = "kraken"
@@ -75,7 +75,7 @@ class KrakenProvider(OHLCVProvider):
 
         try:
             async with (
-                aiohttp.ClientSession() as session,
+                aiohttp.ClientSession(timeout=HTTP_TIMEOUT) as session,
                 session.get(_BASE_URL, params=params) as resp,
             ):
                 if resp.status != 200:

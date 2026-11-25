@@ -250,26 +250,4 @@ async def fetch(
 
 
 async def teardown() -> None:
-    """Close open provider sessions (e.g. aiohttp).
-
-    Only touches providers that were actually instantiated, so a crypto-only
-    run never imports yfinance at process shutdown.
-    """
-    import importlib
-
-    _instances = [
-        (_binance, "tickerflow.providers.binance"),
-        (_coingecko, "tickerflow.providers.coingecko"),
-        (_kraken, "tickerflow.providers.kraken"),
-        (_kucoin, "tickerflow.providers.kucoin"),
-        (_yfinance, "tickerflow.providers.yfinance"),
-        (_tiingo, "tickerflow.providers.tiingo"),
-        (_finnhub, "tickerflow.providers.finnhub"),
-    ]
-    for instance, mod_path in _instances:
-        if instance is None:
-            continue
-        mod = importlib.import_module(mod_path)
-        session = getattr(mod, "_session", None)
-        if session is not None and not session.closed:
-            await session.close()
+    """Kept for compatibility: every provider closes its HTTP session after each request."""
