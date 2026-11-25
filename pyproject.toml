@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tickerflow"
 version = "0.2.5"
-description = "One async Python call for crypto, stocks, and forex OHLCV data — automatic provider routing, zero API keys"
+description = "Async OHLCV for crypto, stocks and forex with automatic provider fallback; crypto needs no API keys"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
@@ -13,7 +13,6 @@ authors = [{ name = "FaustoS88" }]
 keywords = [
     "ohlcv", "market-data", "trading", "finance",
     "binance", "yfinance", "tiingo", "finnhub",
-    "ccxt-alternative", "yfinance-alternative",
     "stock-data", "forex-data", "crypto-data",
     "no-api-key", "async-python", "pydantic-ai",
 ]
@@ -39,11 +38,10 @@ dependencies = [
 tiingo = ["requests>=2.31"]
 finnhub = ["finnhub-python>=2.4"]
 pandas = ["pandas>=2.0"]
-chart = []  # stdlib-only renderer, no extra deps needed
 serve = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "httpx>=0.27"]
 ai = ["pydantic-ai>=2.0.0"]
 all = [
-    "tickerflow[tiingo,finnhub,pandas,chart,serve,ai]",
+    "tickerflow[tiingo,finnhub,pandas,serve,ai]",
 ]
 dev = [
     "pytest>=8",
