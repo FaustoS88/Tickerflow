@@ -5,4 +5,4 @@ from .models import Candle, Candles
 from .registry import INTERVALS, fetch, fetch_df
 
 __all__ = ["INTERVALS", "Candle", "Candles", "NoDataError", "ProviderError", "fetch", "fetch_df"]
-__version__ = "0.2.6"
+__version__ = "0.3.0"
