@@ -10,11 +10,13 @@ The project was called `ohlcv-hub` from 2026-02-22 (repository and import name),
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-11-26
+
 ### Added
 - `fetch` takes `start` and `end` for a date range. Binance and KuCoin page back from the newest bar, yfinance asks Yahoo for the range, and Kraken serves ranges inside its last 720 bars. On Binance and KuCoin a `limit` above one request's cap is paged too.
 - `fetch_df` returns a pandas DataFrame, with the provider that served it in `df.attrs["provider"]`.
 - `fetch` returns `Candles`, a list whose `provider` attribute names the provider that served it; the server's `/ohlcv` answer has a `provider` field.
-- `providers=` tries the named providers in that order; `timeout=` (30 seconds) bounds the whole chain, yfinance included.
+- `providers=` tries the named providers in that order; `timeout=` (30 seconds by default) bounds the whole chain, yfinance included.
 - `tickerflow.INTERVALS` lists the intervals `fetch` accepts.
 
 ### Changed
