@@ -306,14 +306,14 @@ See [examples/](https://github.com/FaustoS88/Tickerflow/tree/main/examples) for 
 - `tickerflow chart` — terminal candlestick charts
 - Pydantic AI integration example
 
-**In the next release**
+**Shipped in v0.3**
 - Date ranges with pagination where the exchange allows it
 - Errors that give each provider's reason, and results that name the provider
 
 **Planned**
 - OKX and Bybit providers
 - WebSocket streaming
-- Async context manager support
+- Batch fetching of many symbols within each provider's rate limits
 
 ## Contributing
 
